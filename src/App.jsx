@@ -32,6 +32,8 @@ import SettingsModal from './components/Modals/SettingsModal';
 import ArcadeModal, { ARCADE_DAILY_CAP } from './components/Modals/ArcadeModal';
 import SubwayRunGame from './components/minigames/SubwayRunGame';
 import GrillSortGame from './components/minigames/GrillSortGame';
+import DevCalibratorBar from './components/DevCalibratorBar';
+import { loadMergedPetAnchors } from './data/petAnchors';
 import { FoodSvgIcon } from './components/furniture/FoodSvgIcons';
 
 import {
@@ -103,6 +105,16 @@ export default function App() {
   const [isDecoratorMode, setIsDecoratorMode] = useState(false);
   const [activeDecoratorSlot, setActiveDecoratorSlot] = useState('wall');
   const [previewEquipped, setPreviewEquipped] = useState(null);
+  const [isCalibratorOpen, setIsCalibratorOpen] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('calibrate') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const [calibratorEmotion, setCalibratorEmotion] = useState('happy');
+  const [calibratorAccessory, setCalibratorAccessory] = useState('acc_sprout');
+  const [customAnchors, setCustomAnchors] = useState(() => loadMergedPetAnchors());
   const [isPhotoMode, setIsPhotoMode] = useState(false);
   const [timeOverride, setTimeOverride] = useState('auto');
   const [comboToast, setComboToast] = useState(null);
@@ -923,19 +935,25 @@ export default function App() {
       {/* 1. FULL-BLEED 2.5D ROOM CANVAS (Tràn viền 100dvh, không viền đen thô bao quanh) */}
       <div
         className={`w-full transition-all duration-300 ${
-          isDecoratorMode ? 'h-[66dvh]' : 'h-[100dvh]'
+          isDecoratorMode || isCalibratorOpen ? 'h-[66dvh]' : 'h-[100dvh]'
         }`}
       >
         <RoomStage
           roomData={roomData}
-          previewEquipped={previewEquipped}
+          previewEquipped={
+            isCalibratorOpen
+              ? { ...(previewEquipped || {}), accessory: calibratorAccessory }
+              : previewEquipped
+          }
           isDecoratorMode={isDecoratorMode}
           activeDecoratorSlot={activeDecoratorSlot}
           onSelectDecoratorSlot={(slotId) => setActiveDecoratorSlot(slotId)}
           timeOverride={timeOverride}
           bothOnline={bothOnline}
-          isTrayOpen={Boolean(activeTray)}
+          isTrayOpen={Boolean(activeTray) || isCalibratorOpen}
           isPhotoMode={isPhotoMode}
+          calibratorEmotionOverride={isCalibratorOpen ? calibratorEmotion : null}
+          customAnchors={customAnchors}
           onPetTap={handlePetTap}
           onCoopPlayBall={handleCoopPlayBall}
           onCleanTrash={handleCleanSingleTrash}
@@ -1084,7 +1102,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* 3. FLOATING BOTTOM HUD (z-[55] — Nằm trên lớp ánh sáng z-[40] và mọi vật thể trong phòng) */}
-      {!isPhotoMode && !isDecoratorMode && (
+      {!isPhotoMode && !isDecoratorMode && !isCalibratorOpen && (
         <div
           style={{
             bottom: 'max(env(safe-area-inset-bottom, 10px), 10px)'
@@ -1365,7 +1383,25 @@ export default function App() {
         onRenamePet={handleRenamePet}
         onSyncEncryptedKey={handleSyncEncryptedKey}
         onToggleDemoCoopPartner={handleToggleDemoCoopPartner}
+        onOpenDevCalibrator={() => {
+          setIsDecoratorMode(false);
+          setActiveTray(null);
+          setIsCalibratorOpen(true);
+        }}
         onLeaveRoom={handleLeaveRoom}
+      />
+
+      {/* CÔNG CỤ CĂN CHỈNH ĐIỂM NEO PHỤ KIỆN TRỰC QUAN (?calibrate=1 hoặc Settings) */}
+      <DevCalibratorBar
+        isOpen={isCalibratorOpen}
+        onClose={() => setIsCalibratorOpen(false)}
+        petType={pet.type || 'cat'}
+        selectedEmotion={calibratorEmotion}
+        onSelectEmotion={(em) => setCalibratorEmotion(em)}
+        selectedAccessory={calibratorAccessory}
+        onSelectAccessory={(acc) => setCalibratorAccessory(acc)}
+        anchors={customAnchors}
+        onChangeAnchors={(next) => setCustomAnchors(next)}
       />
 
       {/* GÓC VUI CHƠI (ARCADE MODAL) */}

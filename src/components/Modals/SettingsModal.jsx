@@ -37,6 +37,7 @@ export default function SettingsModal({
   onRenamePet,
   onSyncEncryptedKey,
   onToggleDemoCoopPartner,
+  onOpenDevCalibrator,
   onLeaveRoom
 }) {
   const [petNameInput, setPetNameInput] = useState('');
@@ -352,7 +353,18 @@ export default function SettingsModal({
           </div>
         </div>
 
-        {/* 5. Đổi phòng / Rời phòng */}
+        {/* 5. Công cụ ẩn Căn chỉnh phụ kiện (Dev Calibrator) & Rời phòng */}
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            if (onOpenDevCalibrator) onOpenDevCalibrator();
+          }}
+          className="tactile-btn w-full py-2.5 rounded-2xl bg-[#FFFDF9] border-2 border-[#4A3525] text-[#4A3525] text-xs font-black flex items-center justify-center gap-1.5"
+        >
+          <span>Căn chỉnh phụ kiện trực quan (Dev)</span>
+        </button>
+
         <button
           type="button"
           onClick={onLeaveRoom}

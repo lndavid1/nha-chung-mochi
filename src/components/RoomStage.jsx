@@ -40,6 +40,8 @@ export default function RoomStage({
   bothOnline = false,
   isTrayOpen = false,
   isPhotoMode = false,
+  calibratorEmotionOverride = null,
+  customAnchors = null,
   onPetTap,
   onCoopPlayBall,
   onCleanTrash,
@@ -92,7 +94,7 @@ export default function RoomStage({
   const trashList = Array.isArray(pet.trashList) ? pet.trashList : [];
 
   const timeInfo = getTimeOfDay(nowDate, timeOverride);
-  const activeEmotion = resolvePetEmotion(pet, bothOnline);
+  const activeEmotion = calibratorEmotionOverride || resolvePetEmotion(pet, bothOnline);
   const aiBubble = pet.aiBubble || null;
 
   // Hiệu ứng gõ chữ mượt (Typewriter) cho bong bóng thoại AI
@@ -667,8 +669,13 @@ export default function RoomStage({
           <PetAvatar
             type={pet.type || 'cat'}
             emotion={activeEmotion}
-            isSleeping={pet.isSleeping}
+            isSleeping={
+              calibratorEmotionOverride
+                ? calibratorEmotionOverride === 'sleepy'
+                : pet.isSleeping
+            }
             accessoryId={equipped.accessory}
+            customAnchors={customAnchors}
             isPetted={isPetted}
             facingLeft={petPos.facingLeft}
             isWalking={petPos.isWalking}

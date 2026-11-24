@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import availableAssets from '../../data/availableAssets.json';
+import { ACCESSORY_SLOTS, loadMergedPetAnchors } from '../../data/petAnchors';
 import SmartAsset from '../common/SmartAsset';
 
 // Render 6 Phụ kiện đeo trực tiếp lên đầu hoặc cổ thú cưng
@@ -91,24 +92,70 @@ export function PetAccessorySvg({ accessoryId = 'acc_none' }) {
     );
   }
 
+  // 6. Khăn len mùa đông sọc kem-san hô
+  if (accessoryId === 'acc_scarf') {
+    return (
+      <g transform="translate(110, 146)">
+        <rect x="-34" y="-8" width="68" height="16" rx="8" fill="#FFF3E2" stroke="#4A3525" strokeWidth="2.4" />
+        <line x1="-20" y1="-8" x2="-20" y2="8" stroke="#FF9B71" strokeWidth="5" />
+        <line x1="0" y1="-8" x2="0" y2="8" stroke="#FF9B71" strokeWidth="5" />
+        <line x1="20" y1="-8" x2="20" y2="8" stroke="#FF9B71" strokeWidth="5" />
+        <rect x="12" y="4" width="14" height="22" rx="5" fill="#FF9B71" stroke="#4A3525" strokeWidth="2.2" />
+        <line x1="12" y1="15" x2="26" y2="15" stroke="#FFF3E2" strokeWidth="4" />
+      </g>
+    );
+  }
+
   return null;
 }
 
-// Thumbnail SVG phụ kiện dùng trong DecoratorDrawer
-export function AccessoryThumbnail({ accessoryId }) {
+// Standalone SVG cho từng phụ kiện (dùng khi gắn lên Pet 2D WebP mà chưa có file .webp phụ kiện)
+export function StandaloneAccessorySvg({ accessoryId, className = 'w-full h-full' }) {
+  if (!accessoryId || accessoryId === 'acc_none') return null;
+
+  const viewBoxes = {
+    acc_sprout: '85 36 50 32',
+    acc_bow: '82 134 56 30',
+    acc_beret: '70 34 80 42',
+    acc_glasses: '68 88 84 40',
+    acc_crown: '82 34 56 34',
+    acc_scarf: '72 134 76 42'
+  };
+
   return (
-    <svg viewBox="0 0 100 100" className="w-12 h-12 overflow-visible">
-      <circle cx="50" cy="54" r="28" fill="#FFF3E2" stroke="#4A3525" strokeWidth="2.2" strokeDasharray="4 4" />
-      {accessoryId === 'acc_none' ? (
+    <svg
+      viewBox={viewBoxes[accessoryId] || '70 35 80 60'}
+      className={`${className} overflow-visible`}
+    >
+      <PetAccessorySvg accessoryId={accessoryId} />
+    </svg>
+  );
+}
+
+// Thumbnail SVG phụ kiện dùng trong DecoratorDrawer (Hybrid WebP -> SVG)
+export function AccessoryThumbnail({ accessoryId }) {
+  if (accessoryId === 'acc_none') {
+    return (
+      <svg viewBox="0 0 100 100" className="w-12 h-12 overflow-visible">
+        <circle cx="50" cy="54" r="28" fill="#FFF3E2" stroke="#4A3525" strokeWidth="2.2" strokeDasharray="4 4" />
         <text x="50" y="59" textAnchor="middle" fill="#7D6352" fontSize="13" fontWeight="800">
           Mộc
         </text>
-      ) : (
-        <g transform="translate(-60, -40)">
-          <PetAccessorySvg accessoryId={accessoryId} />
-        </g>
-      )}
-    </svg>
+      </svg>
+    );
+  }
+
+  return (
+    <div className="w-12 h-12 flex items-center justify-center p-1">
+      <SmartAsset
+        category="accessories"
+        assetId={accessoryId}
+        alt={accessoryId}
+        showShadow={false}
+        className="w-full h-full object-contain"
+        fallbackSvg={<StandaloneAccessorySvg accessoryId={accessoryId} />}
+      />
+    </div>
   );
 }
 
@@ -117,6 +164,8 @@ export default function PetAvatar({
   emotion = 'happy',
   isSleeping = false,
   accessoryId = 'acc_sprout',
+  accessoriesList = null,
+  customAnchors = null,
   isPetted = false,
   facingLeft = false,
   isWalking = false
@@ -484,6 +533,19 @@ export default function PetAvatar({
     : null;
 
   if (resolvedPetAssetId) {
+    // Tập hợp danh sách phụ kiện đang đeo (hỗ trợ cả 1 phụ kiện cũ và nhiều phụ kiện cùng lúc)
+    const activeWearables = Array.isArray(accessoriesList)
+      ? accessoriesList.filter((id) => id && id !== 'acc_none')
+      : accessoryId && accessoryId !== 'acc_none'
+      ? [accessoryId]
+      : [];
+
+    const anchorsMap = customAnchors || loadMergedPetAnchors();
+    const petPoseAnchors =
+      anchorsMap?.[type]?.[emotionKey] ||
+      anchorsMap?.cat?.[emotionKey] ||
+      anchorsMap?.cat?.happy;
+
     return (
       <div
         className="relative select-none w-32 h-32 sm:w-36 sm:h-36 flex items-end justify-center"
@@ -492,6 +554,7 @@ export default function PetAvatar({
           transition: 'transform 0.25s ease'
         }}
       >
+        {/* Container đồng bộ toàn bộ chuyển động (thở, nhún nhảy, squash & stretch) cho CẢ Pet và Phụ kiện */}
         <motion.div
           animate={
             isPetted
@@ -519,8 +582,9 @@ export default function PetAvatar({
               : { duration: 2.6, repeat: Infinity, ease: 'easeInOut' }
           }
           style={{ transformOrigin: 'bottom center' }}
-          className="w-full h-full"
+          className="relative w-full h-full flex items-end justify-center"
         >
+          {/* Lớp ảnh Pet 2D WebP */}
           <SmartAsset
             category="pets"
             assetId={resolvedPetAssetId}
@@ -528,6 +592,43 @@ export default function PetAvatar({
             showShadow={true}
             className="w-full h-full object-contain object-bottom drop-shadow-sm"
           />
+
+          {/* Lớp Phụ Kiện neo chuẩn xác theo tọa độ % (head / eyes / neck) */}
+          {activeWearables.map((wearId) => {
+            const accMeta = ACCESSORY_SLOTS[wearId];
+            if (!accMeta) return null;
+            if (accMeta.hideWhenSleeping && emotionKey === 'sleepy') return null;
+
+            const anchor = petPoseAnchors?.[accMeta.slot] || {
+              x: 50,
+              y: 20,
+              r: 0,
+              s: 1
+            };
+
+            return (
+              <div
+                key={wearId}
+                style={{
+                  left: `${anchor.x}%`,
+                  top: `${anchor.y}%`,
+                  width: `${accMeta.baseScale * (anchor.s ?? 1) * 100}%`,
+                  transform: `translate(-50%, -50%) rotate(${anchor.r ?? 0}deg)`,
+                  zIndex: accMeta.zIndex
+                }}
+                className="pointer-events-none absolute flex items-center justify-center"
+              >
+                <SmartAsset
+                  category="accessories"
+                  assetId={wearId}
+                  alt={wearId}
+                  showShadow={false}
+                  className="w-full h-auto object-contain drop-shadow-xs"
+                  fallbackSvg={<StandaloneAccessorySvg accessoryId={wearId} />}
+                />
+              </div>
+            );
+          })}
         </motion.div>
       </div>
     );

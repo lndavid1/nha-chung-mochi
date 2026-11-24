@@ -8,8 +8,9 @@ RAW_DIR = ROOT_DIR / "raw_assets"
 OUT_DIR = ROOT_DIR / "public" / "assets"
 MANIFEST_PATH = ROOT_DIR / "src" / "data" / "availableAssets.json"
 
-CATEGORIES = ["pets", "windows", "beds", "rugs", "plants", "decor"]
+CATEGORIES = ["pets", "windows", "beds", "rugs", "plants", "decor", "accessories"]
 MAX_DIM = 512
+ACCESSORY_MAX_DIM = 256
 
 
 def remove_bg_smart_bfs(img: Image.Image) -> Image.Image:
@@ -221,8 +222,30 @@ def find_connected_object_boxes(rgba: Image.Image, expected_count: int, rows: in
     return grid_boxes, "uniform-grid"
 
 
-def save_clean_webp(cell_rgba: Image.Image, dst_path: Path):
+def make_glasses_lenses_translucent(rgba: Image.Image) -> Image.Image:
+    """
+    Riêng cho kính tròn (acc_glasses): xóa mảng xám trung tính #D8D8D8 bị kẹt bên trong 2 tròng kính
+    và chuyển thành lớp kính mờ trong suốt nhẹ (alpha ~32) để thấy rõ mắt thú phía sau.
+    """
+    out = rgba.copy()
+    w, h = out.size
+    px = out.load()
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a > 30:
+                sat = max(r, g, b) - min(r, g, b)
+                luma = 0.299 * r + 0.587 * g + 0.114 * b
+                # Màu nền xám sáng hoặc tròng kính sáng không bão hòa nằm bên trong gọng vàng
+                if sat < 26 and luma > 165:
+                    px[x, y] = (245, 250, 255, 38)
+    return out
+
+
+def save_clean_webp(cell_rgba: Image.Image, dst_path: Path, max_dim: int = MAX_DIM, is_glasses: bool = False):
     cleaned = remove_small_specks(cell_rgba)
+    if is_glasses:
+        cleaned = make_glasses_lenses_translucent(cleaned)
 
     # Đảm bảo 4 góc alpha == 0
     w, h = cleaned.size
@@ -236,10 +259,10 @@ def save_clean_webp(cell_rgba: Image.Image, dst_path: Path):
     if bbox:
         cleaned = cleaned.crop(bbox)
 
-    # Resize giữ tỉ lệ (cạnh dài nhất 512px)
+    # Resize giữ tỉ lệ
     cw, ch = cleaned.size
-    if max(cw, ch) > MAX_DIM:
-        scale = MAX_DIM / float(max(cw, ch))
+    if max(cw, ch) > max_dim:
+        scale = max_dim / float(max(cw, ch))
         cleaned = cleaned.resize(
             (max(1, int(cw * scale)), max(1, int(ch * scale))),
             Image.Resampling.LANCZOS,
@@ -258,7 +281,7 @@ def save_clean_webp(cell_rgba: Image.Image, dst_path: Path):
     print(f"[OK] {dst_path.relative_to(ROOT_DIR)} ({size_kb:.1f} KB, {cleaned.size[0]}x{cleaned.size[1]})")
 
 
-def process_sheet(sheet_path: Path, rows: int, cols: int, targets: list):
+def process_sheet(sheet_path: Path, rows: int, cols: int, targets: list, max_dim: int = MAX_DIM):
     if not sheet_path.exists():
         print(f"[SKIP] Missing sheet: {sheet_path}")
         return
@@ -273,7 +296,7 @@ def process_sheet(sheet_path: Path, rows: int, cols: int, targets: list):
             break
         crop = full_rgba.crop(boxes[idx])
         dst = OUT_DIR / cat / f"{asset_id}.webp"
-        save_clean_webp(crop, dst)
+        save_clean_webp(crop, dst, max_dim=max_dim, is_glasses=(asset_id == "acc_glasses"))
 
 
 def rebuild_manifest():
@@ -303,6 +326,7 @@ def find_sheet_file(stem: str) -> Path:
 def main():
     pet_sheet = find_sheet_file("sheet_pet_2x2")
     room_sheet = find_sheet_file("sheet_room_3x2")
+    acc_sheet = find_sheet_file("sheet_accessories_3x2")
 
     process_sheet(
         pet_sheet,
@@ -328,6 +352,21 @@ def main():
             ("decor", "decor_bookshelf"),
             ("decor", "decor_lamp"),
         ],
+    )
+
+    process_sheet(
+        acc_sheet,
+        rows=2,
+        cols=3,
+        targets=[
+            ("accessories", "acc_sprout"),
+            ("accessories", "acc_bow"),
+            ("accessories", "acc_beret"),
+            ("accessories", "acc_glasses"),
+            ("accessories", "acc_crown"),
+            ("accessories", "acc_scarf"),
+        ],
+        max_dim=ACCESSORY_MAX_DIM,
     )
 
     rebuild_manifest()

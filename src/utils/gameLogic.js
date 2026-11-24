@@ -142,7 +142,8 @@ export const FURNITURE_CATALOG = {
     { id: 'acc_bow', slot: 'accessory', name: 'Nơ Ruy-Băng Đỏ', price: 35, desc: 'Chiếc nơ cổ ruy-băng đỏ thắm kèm chuông vàng nhỏ' },
     { id: 'acc_beret', slot: 'accessory', name: 'Mũ Nồi Họa Sĩ Be', price: 50, desc: 'Mũ nồi beret màu kem bơ phong cách họa sĩ Paris' },
     { id: 'acc_glasses', slot: 'accessory', name: 'Kính Tròn Học Thức', price: 55, desc: 'Cặp kính gọng vàng tròn xoe trông cực kỳ uyên bác' },
-    { id: 'acc_crown', slot: 'accessory', name: 'Vương Miện Hoàng Gia', price: 85, desc: 'Vương miện vàng đính ngọc hồng cho Boss quyền lực nhất nhà' }
+    { id: 'acc_crown', slot: 'accessory', name: 'Vương Miện Hoàng Gia', price: 85, desc: 'Vương miện vàng đính ngọc hồng cho Boss quyền lực nhất nhà' },
+    { id: 'acc_scarf', slot: 'accessory', name: 'Khăn Len Mùa Đông', price: 60, desc: 'Khăn quàng cổ đan len sọc kem-san hô ấm áp siêu cưng' }
   ]
 };
 
