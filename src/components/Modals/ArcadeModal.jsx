@@ -1,6 +1,7 @@
 import React from 'react';
-import { Gamepad2, Trophy, Flame, Play, Coins, Sparkles } from 'lucide-react';
+import { Gamepad2, Trophy, Flame, Play, Coins, Sparkles, UtensilsCrossed } from 'lucide-react';
 import BottomSheet from '../BottomSheet';
+import { SkewerSvg } from '../minigames/grillAssets';
 
 export const ARCADE_DAILY_CAP = 150;
 
@@ -9,7 +10,8 @@ export default function ArcadeModal({
   onClose,
   roomData,
   dailyEarnedCoins = 0,
-  onStartSubwayRun
+  onStartSubwayRun,
+  onStartGrillSort
 }) {
   const petName = roomData?.pet?.name || 'Mochi';
   const p1Name = roomData?.players?.player1?.name || 'Chủ 1';
@@ -18,6 +20,11 @@ export default function ArcadeModal({
   const subwayScores = roomData?.minigames?.subwayRun?.highScores || {};
   const p1Best = subwayScores.player1 || { score: 0, distance: 0, coins: 0 };
   const p2Best = subwayScores.player2 || { score: 0, distance: 0, coins: 0 };
+
+  const grillData = roomData?.minigames?.grillSort || {};
+  const gP1 = grillData.player1 || { maxLevel: 0, bestScore: 0 };
+  const gP2 = grillData.player2 || { maxLevel: 0, bestScore: 0 };
+  const sharedOrdersCleared = Number(grillData.sharedOrdersCleared || 0);
 
   const remainingCap = Math.max(0, ARCADE_DAILY_CAP - dailyEarnedCoins);
 
@@ -28,6 +35,7 @@ export default function ArcadeModal({
       title="Góc Vui Chơi Co-op"
       subtitle={`Kiếm thêm Xu chung & đua kỷ lục cùng ${petName}`}
       icon={Gamepad2}
+      maxHeight="86dvh"
     >
       <div className="space-y-3.5">
         {/* Thanh theo dõi Hạn mức Xu thưởng hàng ngày (Daily Bonus Cap) */}
@@ -48,7 +56,62 @@ export default function ArcadeModal({
           </span>
         </div>
 
-        {/* THẺ MINI-GAME NỔI BẬT: MOCHI CHẠY PHỐ (SUBWAY SURFERS 3 LÀN) */}
+        {/* THẺ MINI-GAME 1: BẾP NƯỚNG MOCHI (MỚI • GIẢI ĐỐ BBQ TRIPLE-MATCH) */}
+        <div className="relative p-4 rounded-[26px] bg-gradient-to-br from-[#FFF6E5] via-[#FFE9D6] to-[#FFF0DE] border-[2.5px] border-[#4A3525] shadow-md space-y-3 overflow-hidden">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#88C9A1] border-[1.6px] border-[#4A3525] text-[10px] font-black text-[#4A3525] mb-1.5">
+                <UtensilsCrossed className="w-3 h-3" />
+                <span>Mới • Giải Đố</span>
+              </div>
+              <h3 className="text-lg font-black text-[#4A3525] leading-tight">
+                Bếp Nướng {petName}
+              </h3>
+              <p className="text-[11px] font-bold text-[#7D6352] mt-0.5 leading-snug">
+                Xếp 3 xiên nướng giống nhau giao đơn, phá băng, mở xích & cùng nhau tích lũy đơn bếp chung!
+              </p>
+            </div>
+
+            {/* Hình minh họa 3 xiên nướng SVG mini */}
+            <div className="w-16 h-16 rounded-2xl bg-[#6B4E3D] border-2 border-[#4A3525] shrink-0 p-1.5 flex items-center justify-around shadow-sm">
+              <div className="w-4 h-12"><SkewerSvg type="burger" /></div>
+              <div className="w-4 h-12"><SkewerSvg type="mochi" /></div>
+              <div className="w-4 h-12"><SkewerSvg type="pizza" /></div>
+            </div>
+          </div>
+
+          {/* Thanh đối đầu Màn & Tiến Độ Bếp Chung */}
+          <div className="p-2.5 rounded-2xl bg-[#FFFDF9] border-[1.8px] border-[#4A3525] flex items-center justify-between text-[11px] font-black text-[#4A3525]">
+            <span className="truncate">
+              {p1Name}: <strong className="text-[#E87A4D]">Màn {gP1.maxLevel || 0}</strong>
+            </span>
+            <span className="text-[#4A3525]/30">|</span>
+            <span className="truncate">
+              {p2Name}: <strong className="text-[#5EA87A]">Màn {gP2.maxLevel || 0}</strong>
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between text-[10.5px] font-extrabold text-[#4A3525]">
+            <span className="flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-[#E87A4D]" />
+              +25 Xu/màn (+5 nếu không Booster)
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-[#FFE082] border border-[#4A3525] text-[10px] font-black tabular-nums">
+              Bếp chung: {sharedOrdersCleared} đơn
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={onStartGrillSort}
+            className="tactile-btn w-full py-3 rounded-2xl bg-[#88C9A1] border-2 border-[#4A3525] text-[#4A3525] font-black text-sm flex items-center justify-center gap-2 shadow-sm"
+          >
+            <Play className="w-4 h-4 fill-[#4A3525]" />
+            <span>Nướng Xiên Ngay!</span>
+          </button>
+        </div>
+
+        {/* THẺ MINI-GAME 2: MOCHI CHẠY PHỐ (SUBWAY SURFERS 3 LÀN) */}
         <div className="relative p-4 rounded-[26px] bg-gradient-to-br from-[#FFF3D6] via-[#FFE8D6] to-[#FFDCE5] border-[2.5px] border-[#4A3525] shadow-md space-y-3 overflow-hidden">
           <div className="flex items-start justify-between gap-2">
             <div>
@@ -64,7 +127,6 @@ export default function ArcadeModal({
               </p>
             </div>
 
-            {/* Hình minh họa đường chạy 3 làn SVG mini */}
             <div className="w-16 h-16 rounded-2xl bg-[#FFFDF9] border-2 border-[#4A3525] shrink-0 overflow-hidden shadow-sm">
               <svg viewBox="0 0 64 64" className="w-full h-full">
                 <rect width="64" height="24" fill="#AEE2FF" />
@@ -78,7 +140,6 @@ export default function ArcadeModal({
             </div>
           </div>
 
-          {/* Bảng so kè Kỷ lục Player 1 vs Player 2 */}
           <div className="grid grid-cols-2 gap-2">
             <div
               className={`p-2.5 rounded-2xl border-[1.8px] border-[#4A3525] ${

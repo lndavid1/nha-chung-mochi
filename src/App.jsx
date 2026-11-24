@@ -31,6 +31,7 @@ import LogModal from './components/Modals/LogModal';
 import SettingsModal from './components/Modals/SettingsModal';
 import ArcadeModal, { ARCADE_DAILY_CAP } from './components/Modals/ArcadeModal';
 import SubwayRunGame from './components/minigames/SubwayRunGame';
+import GrillSortGame from './components/minigames/GrillSortGame';
 import { FoodSvgIcon } from './components/furniture/FoodSvgIcons';
 
 import {
@@ -797,6 +798,82 @@ export default function App() {
     }
   };
 
+  // 14. Kết thúc 1 màn "Bếp Nướng Mochi" (/rooms/{roomId}/minigames/grillSort)
+  const handleGrillLevelComplete = async ({
+    level,
+    score,
+    ordersCleared,
+    rewardCoins,
+    noBoosterBonus,
+    passedPartnerLevel
+  }) => {
+    if (!roomData || !session) return;
+    const now = Date.now();
+    const myRole = session.playerRole;
+    const prevGrill = roomData?.minigames?.grillSort || {};
+    const prevMine = prevGrill[myRole] || { maxLevel: 0, bestScore: 0 };
+    const prevShared = Number(prevGrill.sharedOrdersCleared || 0);
+
+    const nextCoins = (roomData.coins ?? 0) + rewardCoins;
+    const nextMood = clampStat((roomData.pet?.mood ?? 80) + 12);
+    const nextEnergy = clampStat((roomData.pet?.energy ?? 80) - 6);
+
+    const updates = {
+      coins: nextCoins,
+      'pet/mood': nextMood,
+      'pet/energy': nextEnergy,
+      'pet/isSleeping': false,
+      'pet/lastUpdated': now,
+      'minigames/dailyBonusDate': todayKeyStr,
+      'minigames/dailyBonusCoins': dailyArcadeEarned + rewardCoins,
+      'minigames/grillSort/sharedOrdersCleared': prevShared + ordersCleared,
+      [`minigames/grillSort/${myRole}`]: {
+        maxLevel: Math.max(prevMine.maxLevel || 0, level),
+        bestScore: Math.max(prevMine.bestScore || 0, score),
+        updatedAt: now
+      }
+    };
+
+    const partnerDisplayName = partnerInfo?.name || 'người kia';
+    const actionDesc = passedPartnerLevel
+      ? `vừa phá đảo Màn ${level} Bếp Nướng Mochi (${score}đ) và vượt mặt kỷ lục màn của ${partnerDisplayName}!`
+      : `vừa hoàn thành Màn ${level} Bếp Nướng Mochi (+${rewardCoins} Xu${
+          noBoosterBonus ? ', không dùng Booster!' : ''
+        })!`;
+
+    const logEntry = {
+      id: `log_grill_${now}`,
+      actor: session.playerName,
+      action: actionDesc,
+      timestamp: now
+    };
+
+    if (!passedPartnerLevel) {
+      updates.logs = [
+        {
+          ...logEntry,
+          petComment: `Xiên nướng thơm phức cả phòng luôn! Hai chủ đã nướng chung ${prevShared + ordersCleared} đơn rồi đó!`
+        },
+        ...(roomData.logs || [])
+      ].slice(0, 20);
+    }
+
+    await updateRoomFields(session.roomId, updates);
+
+    if (passedPartnerLevel) {
+      triggerPetAiReaction({
+        snapshotRoom: {
+          ...roomData,
+          coins: nextCoins,
+          pet: { ...roomData.pet, mood: nextMood, energy: nextEnergy }
+        },
+        triggerType: 'care',
+        actionDetail: `${session.playerName} vừa vượt qua Màn ${level} Bếp Nướng Mochi, bỏ xa kỷ lục của ${partnerDisplayName}! Hãy bình luận cà khịa dễ thương!`,
+        logEntry
+      });
+    }
+  };
+
   if (!session) {
     return <Onboarding onEnterRoom={handleEnterRoom} />;
   }
@@ -1301,9 +1378,13 @@ export default function App() {
           setActiveModal(null);
           setActiveMiniGame('subwayRun');
         }}
+        onStartGrillSort={() => {
+          setActiveModal(null);
+          setActiveMiniGame('grillSort');
+        }}
       />
 
-      {/* MINI-GAME TOÀN MÀN HÌNH: MOCHI CHẠY PHỐ (SUBWAY SURFERS 3 LÀN) */}
+      {/* MINI-GAME 1: MOCHI CHẠY PHỐ (SUBWAY SURFERS 3 LÀN) */}
       {activeMiniGame === 'subwayRun' && (
         <SubwayRunGame
           petType={pet.type || 'cat'}
@@ -1318,6 +1399,24 @@ export default function App() {
           }
           dailyRemainingCap={dailyArcadeRemaining}
           onGameComplete={handleSubwayRunComplete}
+          onExit={() => setActiveMiniGame(null)}
+        />
+      )}
+
+      {/* MINI-GAME 2: BẾP NƯỚNG MOCHI (BBQ TRIPLE-MATCH SORT PUZZLE) */}
+      {activeMiniGame === 'grillSort' && (
+        <GrillSortGame
+          initialLevel={
+            (roomData?.minigames?.grillSort?.[session.playerRole]?.maxLevel || 0) + 1
+          }
+          petName={pet.name || 'Mochi'}
+          playerName={session.playerName}
+          partnerName={partnerInfo?.name || 'Người kia'}
+          partnerMaxLevel={
+            roomData?.minigames?.grillSort?.[partnerRole]?.maxLevel || 0
+          }
+          dailyRemainingCap={dailyArcadeRemaining}
+          onLevelComplete={handleGrillLevelComplete}
           onExit={() => setActiveMiniGame(null)}
         />
       )}
