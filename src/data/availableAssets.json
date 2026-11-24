@@ -1,7 +1,9 @@
 {
   "pets": [
     "cat_happy",
-    "cat_sleepy"
+    "cat_hungry",
+    "cat_sleepy",
+    "cat_sulky"
   ],
   "windows": [
     "win_wood"
