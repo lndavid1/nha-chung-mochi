@@ -8,8 +8,17 @@
   "windows": [
     "win_wood"
   ],
-  "beds": [],
-  "rugs": [],
-  "plants": [],
-  "decor": []
+  "beds": [
+    "bed_cushion"
+  ],
+  "rugs": [
+    "rug_oval"
+  ],
+  "plants": [
+    "plant_monstera"
+  ],
+  "decor": [
+    "decor_bookshelf",
+    "decor_lamp"
+  ]
 }
