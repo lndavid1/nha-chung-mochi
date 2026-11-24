@@ -16,6 +16,7 @@ import { DecorFurnitureSvg } from './furniture/DecorFurniture';
 import { WallDecorSvg } from './furniture/WallDecor';
 import PetAvatar from './pet/PetAvatar';
 import RoomLighting, { SunbeamOverlay } from './RoomLighting';
+import SmartAsset from './common/SmartAsset';
 
 /**
  * RoomStage — Hệ tọa độ khóa cứng 50% Tường / 50% Sàn (Chuẩn 390x844 iPhone)
@@ -306,10 +307,19 @@ export default function RoomStage({
         title="Chạm để xem giờ & thời tiết ngoài cửa sổ"
         className="absolute z-[10] active:scale-95 transition-transform focus:outline-none"
       >
-        <WindowSvg
-          windowId={equipped.window}
-          period={timeInfo.period}
-          isSleeping={pet.isSleeping}
+        <SmartAsset
+          category="windows"
+          assetId={equipped.window}
+          alt="Cửa sổ"
+          showShadow={false}
+          className="w-full h-full object-contain"
+          fallbackSvg={
+            <WindowSvg
+              windowId={equipped.window}
+              period={timeInfo.period}
+              isSleeping={pet.isSleeping}
+            />
+          }
         />
       </button>
 
@@ -412,7 +422,14 @@ export default function RoomStage({
         }}
         className="absolute -translate-x-1/2 z-[20] pointer-events-none"
       >
-        <RugSvg rugId={equipped.rug} />
+        <SmartAsset
+          category="rugs"
+          assetId={equipped.rug}
+          alt="Thảm trải sàn"
+          showShadow={false}
+          className="w-full h-full object-contain"
+          fallbackSvg={<RugSvg rugId={equipped.rug} />}
+        />
       </div>
 
       {/* ===================================================================== */}
@@ -437,7 +454,13 @@ export default function RoomStage({
         className="absolute z-[25] focus:outline-none cursor-pointer"
         title="Chạm để rung rinh lá cây"
       >
-        <PlantSvg plantId={equipped.plant} />
+        <SmartAsset
+          category="plants"
+          assetId={equipped.plant}
+          alt="Cây cảnh"
+          showShadow={true}
+          fallbackSvg={<PlantSvg plantId={equipped.plant} />}
+        />
       </motion.button>
 
       {/* 6. bed (Giường thú - Góc Giữa-Trái trên sàn: left 29%, top 51%, width 32% — tách biệt hoàn toàn với thảm!) */}
@@ -452,7 +475,13 @@ export default function RoomStage({
         className="absolute z-[25] active:scale-95 transition-transform focus:outline-none cursor-pointer"
         title="Chạm để gọi bé lên giường nghỉ ngơi"
       >
-        <BedSvg bedId={equipped.bed} />
+        <SmartAsset
+          category="beds"
+          assetId={equipped.bed}
+          alt="Giường thú cưng"
+          showShadow={true}
+          fallbackSvg={<BedSvg bedId={equipped.bed} />}
+        />
       </button>
 
       {/* 7. decor (Nội thất lớn - Góc Sau-Phải: right 4%, top 37%, width 31%) */}
@@ -468,10 +497,18 @@ export default function RoomStage({
         className="absolute z-[25] focus:outline-none cursor-pointer"
         title="Chạm để bật/tắt đèn hoặc tương tác nội thất"
       >
-        <DecorFurnitureSvg
-          decorId={equipped.decor}
-          lampOn={lampOn}
-          isNight={timeInfo.isNight}
+        <SmartAsset
+          category="decor"
+          assetId={equipped.decor}
+          alt="Đồ nội thất"
+          showShadow={true}
+          fallbackSvg={
+            <DecorFurnitureSvg
+              decorId={equipped.decor}
+              lampOn={lampOn}
+              isNight={timeInfo.isNight}
+            />
+          }
         />
       </motion.button>
 

@@ -15,8 +15,9 @@ import { PlantSvg } from './furniture/Plants';
 import { DecorFurnitureSvg } from './furniture/DecorFurniture';
 import { WallDecorSvg } from './furniture/WallDecor';
 import { AccessoryThumbnail } from './pet/PetAvatar';
+import SmartAsset from './common/SmartAsset';
 
-// Render hình thu nhỏ bằng chính SVG thật của món đồ đó (Không dùng emoji!)
+// Render hình thu nhỏ bằng ảnh vẽ tay .webp (nếu có) hoặc SVG thật của món đồ đó
 export function RealItemSvgPreview({ item }) {
   if (!item) return null;
 
@@ -26,35 +27,65 @@ export function RealItemSvgPreview({ item }) {
   if (item.slot === 'window') {
     return (
       <div className="w-14 h-14 flex items-center justify-center p-1">
-        <WindowSvg windowId={item.id} period="day" />
+        <SmartAsset
+          category="windows"
+          assetId={item.id}
+          showShadow={false}
+          className="w-full h-full object-contain"
+          fallbackSvg={<WindowSvg windowId={item.id} period="day" />}
+        />
       </div>
     );
   }
   if (item.slot === 'bed') {
     return (
       <div className="w-16 h-12 flex items-center justify-center">
-        <BedSvg bedId={item.id} />
+        <SmartAsset
+          category="beds"
+          assetId={item.id}
+          showShadow={false}
+          className="w-full h-full object-contain"
+          fallbackSvg={<BedSvg bedId={item.id} />}
+        />
       </div>
     );
   }
   if (item.slot === 'rug') {
     return (
       <div className="w-16 h-12 flex items-center justify-center">
-        <RugSvg rugId={item.id} />
+        <SmartAsset
+          category="rugs"
+          assetId={item.id}
+          showShadow={false}
+          className="w-full h-full object-contain"
+          fallbackSvg={<RugSvg rugId={item.id} />}
+        />
       </div>
     );
   }
   if (item.slot === 'plant') {
     return (
       <div className="w-14 h-14 flex items-center justify-center">
-        <PlantSvg plantId={item.id} />
+        <SmartAsset
+          category="plants"
+          assetId={item.id}
+          showShadow={false}
+          className="w-full h-full object-contain"
+          fallbackSvg={<PlantSvg plantId={item.id} />}
+        />
       </div>
     );
   }
   if (item.slot === 'decor') {
     return (
       <div className="w-14 h-14 flex items-center justify-center">
-        <DecorFurnitureSvg decorId={item.id} lampOn={true} />
+        <SmartAsset
+          category="decor"
+          assetId={item.id}
+          showShadow={false}
+          className="w-full h-full object-contain"
+          fallbackSvg={<DecorFurnitureSvg decorId={item.id} lampOn={true} />}
+        />
       </div>
     );
   }

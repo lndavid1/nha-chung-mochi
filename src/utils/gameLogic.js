@@ -159,7 +159,7 @@ export const DEFAULT_EQUIPPED = {
   bed: 'bed_cushion',
   rug: 'rug_oval',
   plant: 'plant_monstera',
-  decor: 'decor_lamp',
+  decor: 'decor_bookshelf',
   wallDecor: 'wdecor_fairy',
   accessory: 'acc_sprout'
 };

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import availableAssets from '../../data/availableAssets.json';
+import SmartAsset from '../common/SmartAsset';
 
 // Render 6 Phụ kiện đeo trực tiếp lên đầu hoặc cổ thú cưng
 export function PetAccessorySvg({ accessoryId = 'acc_none' }) {
@@ -463,6 +465,73 @@ export default function PetAvatar({
       <ellipse cx="142" cy="163" rx="13" ry="8" fill="#FFFDF9" stroke="#4A3525" strokeWidth="2.5" />
     </g>
   );
+
+  // Kiểm tra nếu loài thú này có sprite vẽ tay .webp trong public/assets/pets/
+  const emotionKey = isSleepy
+    ? 'sleepy'
+    : isSulky
+    ? 'sulky'
+    : isHungry
+    ? 'hungry'
+    : 'happy';
+  const preferredPetAssetId = `${type}_${emotionKey}`;
+  const fallbackHappyAssetId = `${type}_happy`;
+  const petAssetsList = availableAssets?.pets || [];
+  const resolvedPetAssetId = petAssetsList.includes(preferredPetAssetId)
+    ? preferredPetAssetId
+    : petAssetsList.includes(fallbackHappyAssetId)
+    ? fallbackHappyAssetId
+    : null;
+
+  if (resolvedPetAssetId) {
+    return (
+      <div
+        className="relative select-none w-32 h-32 sm:w-36 sm:h-36 flex items-end justify-center"
+        style={{
+          transform: facingLeft ? 'scaleX(-1)' : 'scaleX(1)',
+          transition: 'transform 0.25s ease'
+        }}
+      >
+        <motion.div
+          animate={
+            isPetted
+              ? {
+                  scaleX: [1, 1.14, 0.94, 1.04, 1],
+                  scaleY: [1, 0.86, 1.08, 0.97, 1],
+                  y: [0, 4, -6, 0]
+                }
+              : isWalking
+              ? {
+                  y: [0, -8, 0],
+                  scaleY: [1, 1.04, 0.96, 1]
+                }
+              : {
+                  scaleY: [1, 1.03, 1],
+                  scaleX: [1, 0.98, 1],
+                  y: [0, 1.5, 0]
+                }
+          }
+          transition={
+            isPetted
+              ? { duration: 0.55, ease: 'easeOut' }
+              : isWalking
+              ? { duration: 0.45, repeat: Infinity }
+              : { duration: 2.6, repeat: Infinity, ease: 'easeInOut' }
+          }
+          style={{ transformOrigin: 'bottom center' }}
+          className="w-full h-full"
+        >
+          <SmartAsset
+            category="pets"
+            assetId={resolvedPetAssetId}
+            alt={`Thú cưng ${type}`}
+            showShadow={true}
+            className="w-full h-full object-contain object-bottom drop-shadow-sm"
+          />
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div
