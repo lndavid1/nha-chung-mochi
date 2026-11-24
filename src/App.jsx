@@ -753,11 +753,134 @@ export default function App() {
   ];
 
   return (
-    <div className="relative w-full max-w-md mx-auto h-[100dvh] overflow-hidden select-none bg-[#FFF8F0]">
-      {/* 1. FULL-BLEED 2.5D ROOM CANVAS (Chiếm trọn 100% khung hình 100dvh) */}
-      <div
-        className={`w-full transition-all duration-300 ${
-          isDecoratorMode ? 'h-[66dvh]' : 'h-[100dvh]'
+    <div
+      style={{
+        paddingTop: 'max(env(safe-area-inset-top, 8px), 8px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 8px), 8px)'
+      }}
+      className="relative w-full max-w-md mx-auto h-[100dvh] flex flex-col justify-between px-3 overflow-hidden select-none bg-[#FFF8F0]"
+    >
+      {/* Banner hướng dẫn cài PWA trên Safari iOS */}
+      {showIosBanner && !isPhotoMode && (
+        <div className="mb-1.5 px-3 py-1.5 rounded-2xl bg-[#4A3525] text-[#FFF8F0] text-[11px] font-bold flex items-center justify-between gap-2 shadow-md shrink-0 z-[40]">
+          <div className="flex items-center gap-1.5">
+            <Share className="w-3.5 h-3.5 text-[#FFE082] shrink-0" />
+            <span>
+              Bấm <strong>Chia sẻ</strong> → <strong>Thêm vào MH chính</strong> để chơi toàn màn hình!
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={dismissIosBanner}
+            className="p-0.5 rounded-full bg-white/15"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* 1. TOP BAR GỌN GÀNG (Tách biệt hoàn toàn phía trên sân khấu phòng) */}
+      <header className="flex items-center justify-between gap-2 shrink-0 z-[40] mb-1.5">
+        {!isPhotoMode ? (
+          <div className="cozy-glass rounded-full px-3 py-1.5 border-[2px] border-[#4A3525] flex items-center gap-2.5 shadow-sm">
+            <span className="text-xs font-black text-[#4A3525] truncate max-w-[84px]">
+              {pet.name || 'Mochi'}
+            </span>
+
+            <div className="h-3.5 w-[1.5px] bg-[#4A3525]/20" />
+
+            <div
+              className="flex items-center gap-0.5 text-xs font-black text-[#E85D75] tabular-nums"
+              title="Chuỗi ngày Co-op Streak"
+            >
+              <Flame className="w-3.5 h-3.5 fill-[#FF9B71]" />
+              <span>{roomData?.streak ?? 1}</span>
+            </div>
+
+            <div className="h-3.5 w-[1.5px] bg-[#4A3525]/20" />
+
+            <div
+              className="flex items-center gap-1 text-xs font-black text-[#4A3525]"
+              title="Ngân quỹ Xu chung"
+            >
+              <Coins className="w-3.5 h-3.5 text-[#E87A4D]" />
+              <AnimatedCoinCounter value={roomData?.coins ?? 120} />
+            </div>
+          </div>
+        ) : (
+          <div />
+        )}
+
+        <div className="flex items-center gap-1.5">
+          {!isPhotoMode && (
+            <div className="cozy-glass rounded-full px-2.5 py-1.5 border-[2px] border-[#4A3525] flex items-center gap-1.5">
+              <span
+                className={`w-2.5 h-2.5 rounded-full border border-[#4A3525] ${
+                  isPartnerOnline ? 'bg-[#88C9A1] animate-pulse' : 'bg-[#D6C7B8]'
+                }`}
+              />
+              <span className="text-[10.5px] font-black text-[#4A3525] truncate max-w-[96px]">
+                {bothOnline
+                  ? 'Đang ở nhà'
+                  : partnerInfo?.name
+                  ? partnerInfo.name
+                  : session.roomId}
+              </span>
+            </div>
+          )}
+
+          {/* Nút Con mắt (Photo Mode) */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsPhotoMode((prev) => !prev);
+              setActiveTray(null);
+              if (isDecoratorMode) {
+                setIsDecoratorMode(false);
+                setPreviewEquipped(null);
+              }
+            }}
+            className="cozy-glass w-9 h-9 rounded-full border-[2px] border-[#4A3525] flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
+            title={isPhotoMode ? 'Hiện lại giao diện' : 'Ẩn HUD để ngắm phòng / chụp ảnh'}
+          >
+            {isPhotoMode ? (
+              <EyeOff className="w-4 h-4" />
+            ) : (
+              <Eye className="w-4 h-4" />
+            )}
+          </button>
+
+          {!isPhotoMode && (
+            <button
+              type="button"
+              onClick={() => setActiveModal('settings')}
+              className="cozy-glass w-9 h-9 rounded-full border-[2px] border-[#4A3525] flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
+              title="Cài đặt phòng & Bộ não AI"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* Thông báo nổi (Co-op Combo / Thưởng Xu) */}
+      <AnimatePresence>
+        {comboToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -12, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12 }}
+            className="fixed top-16 left-1/2 -translate-x-1/2 z-[45] w-[88%] max-w-xs cozy-glass-dark text-[#FFF8F0] text-xs font-extrabold px-4 py-2 rounded-2xl text-center"
+          >
+            {comboToast}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 2. SÂN KHẤU CĂN PHÒNG 2.5D (Nằm gọn trong khung flex-1, KHÔNG BAO GIỜ tràn đè lên Thanh chỉ số hay Bottom Dock!) */}
+      <main
+        className={`relative flex-1 min-h-0 w-full rounded-[28px] overflow-hidden border-[2.5px] border-[#4A3525] shadow-[0_8px_24px_rgba(74,53,37,0.12)] transition-all duration-300 ${
+          isDecoratorMode ? 'mb-[34dvh]' : ''
         }`}
       >
         <RoomStage
@@ -768,6 +891,7 @@ export default function App() {
           onSelectDecoratorSlot={(slotId) => setActiveDecoratorSlot(slotId)}
           timeOverride={timeOverride}
           bothOnline={bothOnline}
+          isTrayOpen={Boolean(activeTray)}
           onPetTap={handlePetTap}
           onCoopPlayBall={handleCoopPlayBall}
           onCleanTrash={handleCleanSingleTrash}
@@ -777,249 +901,117 @@ export default function App() {
           onOpenChat={() => setActiveModal('chat')}
           hasUnreadSticky={hasUnreadSticky}
         />
-      </div>
 
-      {/* 2. FLOATING TOP BAR (Kính mờ iOS Frosted Glass, tôn trọng safe-area-inset-top) */}
-      <div
-        style={{
-          top: 'max(env(safe-area-inset-top, 10px), 10px)'
-        }}
-        className="fixed inset-x-0 z-35 max-w-md mx-auto px-3 pointer-events-none flex flex-col gap-1.5"
-      >
-        {/* Banner hướng dẫn cài PWA trên Safari iOS */}
-        {showIosBanner && !isPhotoMode && (
-          <div className="pointer-events-auto px-3 py-1.5 rounded-2xl bg-[#4A3525] text-[#FFF8F0] text-[11px] font-bold flex items-center justify-between gap-2 shadow-md">
-            <div className="flex items-center gap-1.5">
-              <Share className="w-3.5 h-3.5 text-[#FFE082] shrink-0" />
-              <span>
-                Bấm <strong>Chia sẻ</strong> → <strong>Thêm vào MH chính</strong> để chơi toàn màn hình!
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={dismissIosBanner}
-              className="p-0.5 rounded-full bg-white/15"
+        {/* Khay trượt nhanh: Cho Ăn hoặc Chăm Sóc (z-[38] nổi hẳn lên trên mọi vật thể trong phòng) */}
+        <AnimatePresence>
+          {activeTray === 'feed' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute inset-x-2.5 bottom-2.5 z-[38] bg-[#FFFDF9]/98 backdrop-blur-md rounded-[24px] p-3 border-[2.4px] border-[#4A3525] shadow-2xl"
             >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between gap-2">
-          {/* Trái: Viên thuốc Tên thú + Streak lửa + Bộ đếm Xu nhảy số */}
-          {!isPhotoMode ? (
-            <div className="pointer-events-auto cozy-glass rounded-full px-3 py-1.5 border-[2px] border-[#4A3525] flex items-center gap-2.5 shadow-sm">
-              <span className="text-xs font-black text-[#4A3525] truncate max-w-[82px]">
-                {pet.name || 'Mochi'}
-              </span>
-
-              <div className="h-3.5 w-[1.5px] bg-[#4A3525]/20" />
-
-              <div
-                className="flex items-center gap-0.5 text-xs font-black text-[#E85D75] tabular-nums"
-                title="Chuỗi ngày Co-op Streak"
-              >
-                <Flame className="w-3.5 h-3.5 fill-[#FF9B71]" />
-                <span>{roomData?.streak ?? 1}</span>
+              <div className="flex items-center justify-between mb-2 px-1">
+                <span className="text-xs font-black text-[#4A3525]">
+                  Bữa ngon cho {pet.name || 'Mochi'} (Đổi phiên chăm = Combo x2 Xu)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTray(null)}
+                  className="px-2 py-0.5 rounded-lg bg-[#FFF0DE] border border-[#4A3525] text-[11px] font-black text-[#4A3525]"
+                >
+                  Đóng
+                </button>
               </div>
-
-              <div className="h-3.5 w-[1.5px] bg-[#4A3525]/20" />
-
-              <div
-                className="flex items-center gap-1 text-xs font-black text-[#4A3525]"
-                title="Ngân quỹ Xu chung"
-              >
-                <Coins className="w-3.5 h-3.5 text-[#E87A4D]" />
-                <AnimatedCoinCounter value={roomData?.coins ?? 120} />
+              <div className="grid grid-cols-4 gap-2">
+                {FOOD_CATALOG.map((food) => (
+                  <button
+                    key={food.id}
+                    type="button"
+                    onClick={() => handleFeedPet(food)}
+                    className="tactile-btn p-2 rounded-2xl bg-[#FFF8F0] border-[1.8px] border-[#4A3525] flex flex-col items-center text-center"
+                  >
+                    <FoodSvgIcon foodId={food.id} className="w-10 h-10" />
+                    <span className="text-[10.5px] font-black text-[#4A3525] mt-1 leading-tight line-clamp-1">
+                      {food.name}
+                    </span>
+                    <span className="text-[10px] font-extrabold text-[#E87A4D] mt-0.5 tabular-nums">
+                      {food.price === 0 ? 'Miễn phí' : `${food.price} Xu`}
+                    </span>
+                  </button>
+                ))}
               </div>
-            </div>
-          ) : (
-            <div />
+            </motion.div>
           )}
 
-          {/* Phải: Viên thuốc Partner Presence + Nút Con mắt (Photo Mode) + Nút Cài đặt */}
-          <div className="pointer-events-auto flex items-center gap-1.5">
-            {!isPhotoMode && (
-              <div className="cozy-glass rounded-full px-2.5 py-1.5 border-[2px] border-[#4A3525] flex items-center gap-1.5">
-                <span
-                  className={`w-2.5 h-2.5 rounded-full border border-[#4A3525] ${
-                    isPartnerOnline ? 'bg-[#88C9A1] animate-pulse' : 'bg-[#D6C7B8]'
-                  }`}
-                />
-                <span className="text-[10.5px] font-black text-[#4A3525] truncate max-w-[96px]">
-                  {bothOnline
-                    ? 'Đang ở nhà'
-                    : partnerInfo?.name
-                    ? partnerInfo.name
-                    : session.roomId}
-                </span>
-              </div>
-            )}
-
-            {/* Nút Con mắt (Photo Mode) để ẩn toàn bộ HUD ngắm phòng / chụp ảnh màn hình */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsPhotoMode((prev) => !prev);
-                setActiveTray(null);
-                if (isDecoratorMode) {
-                  setIsDecoratorMode(false);
-                  setPreviewEquipped(null);
-                }
-              }}
-              className="cozy-glass w-9 h-9 rounded-full border-[2px] border-[#4A3525] flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
-              title={isPhotoMode ? 'Hiện lại giao diện' : 'Ẩn HUD để ngắm phòng / chụp ảnh'}
+          {activeTray === 'care' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute inset-x-2.5 bottom-2.5 z-[38] bg-[#FFFDF9]/98 backdrop-blur-md rounded-[24px] p-3 border-[2.4px] border-[#4A3525] shadow-2xl"
             >
-              {isPhotoMode ? (
-                <EyeOff className="w-4 h-4" />
-              ) : (
-                <Eye className="w-4 h-4" />
-              )}
-            </button>
+              <div className="flex items-center justify-between mb-2 px-1">
+                <span className="text-xs font-black text-[#4A3525]">
+                  Chăm sóc & Dọn dẹp Tổ Ấm
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTray(null)}
+                  className="px-2 py-0.5 rounded-lg bg-[#FFF0DE] border border-[#4A3525] text-[11px] font-black text-[#4A3525]"
+                >
+                  Đóng
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleCareAction('bath')}
+                  className="tactile-btn p-2.5 rounded-2xl bg-[#FFF8F0] border-[1.8px] border-[#4A3525] flex flex-col items-center"
+                >
+                  <Bath className="w-5 h-5 text-[#4A3525] mb-1" />
+                  <span className="text-xs font-black text-[#4A3525]">Tắm Thơm</span>
+                  <span className="text-[10px] font-bold text-[#7D6352]">Sạch 100%</span>
+                </button>
 
-            {!isPhotoMode && (
-              <button
-                type="button"
-                onClick={() => setActiveModal('settings')}
-                className="cozy-glass w-9 h-9 rounded-full border-[2px] border-[#4A3525] flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
-                title="Cài đặt phòng & Bộ não AI"
-              >
-                <Settings className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+                <button
+                  type="button"
+                  onClick={() => handleCareAction('clean_all')}
+                  className="tactile-btn p-2.5 rounded-2xl bg-[#FFF8F0] border-[1.8px] border-[#4A3525] flex flex-col items-center"
+                >
+                  <Sparkles className="w-5 h-5 text-[#5EA87A] mb-1" />
+                  <span className="text-xs font-black text-[#4A3525]">Dọn Phòng</span>
+                  <span className="text-[10px] font-bold text-[#7D6352]">Quét sạch bụi</span>
+                </button>
 
-      {/* Thông báo nổi (Co-op Combo / Thưởng Xu) */}
-      <AnimatePresence>
-        {comboToast && (
-          <motion.div
-            initial={{ opacity: 0, y: -12, scale: 0.92 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -12 }}
-            className="fixed top-16 left-1/2 -translate-x-1/2 z-45 w-[88%] max-w-xs cozy-glass-dark text-[#FFF8F0] text-xs font-extrabold px-4 py-2 rounded-2xl text-center"
-          >
-            {comboToast}
-          </motion.div>
-        )}
-      </AnimatePresence>
+                <button
+                  type="button"
+                  onClick={() => handleCareAction('toggle_sleep')}
+                  className="tactile-btn p-2.5 rounded-2xl bg-[#FFF8F0] border-[1.8px] border-[#4A3525] flex flex-col items-center"
+                >
+                  {pet.isSleeping ? (
+                    <Sun className="w-5 h-5 text-[#E87A4D] mb-1" />
+                  ) : (
+                    <Moon className="w-5 h-5 text-[#4A3525] mb-1" />
+                  )}
+                  <span className="text-xs font-black text-[#4A3525]">
+                    {pet.isSleeping ? 'Bật Đèn Dậy' : 'Tắt Đèn Ngủ'}
+                  </span>
+                  <span className="text-[10px] font-bold text-[#7D6352]">
+                    +15 Năng lượng/h
+                  </span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
 
-      {/* 3. CỤM HUD PHÍA DƯỚI: KHAY TRƯỢT NHANH + 4 VIÊN THUỐC CHỈ SỐ + TACTILE BOTTOM DOCK */}
+      {/* 3. CỤM HUD PHÍA DƯỚI: 4 VIÊN THUỐC CHỈ SỐ + TACTILE BOTTOM DOCK (Tách rời hoàn toàn bên dưới khung phòng) */}
       {!isPhotoMode && !isDecoratorMode && (
-        <div
-          style={{
-            bottom: 'max(env(safe-area-inset-bottom, 10px), 10px)'
-          }}
-          className="fixed inset-x-0 z-35 max-w-md mx-auto px-3 pointer-events-none flex flex-col gap-2"
-        >
-          {/* Khay trượt nhanh: Cho Ăn (Sử dụng SVG thật FoodSvgIcon) */}
-          <AnimatePresence>
-            {activeTray === 'feed' && (
-              <motion.div
-                initial={{ opacity: 0, y: 16, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 16, scale: 0.96 }}
-                className="pointer-events-auto cozy-glass rounded-[26px] p-3 border-[2.2px] border-[#4A3525]"
-              >
-                <div className="flex items-center justify-between mb-2 px-1">
-                  <span className="text-xs font-black text-[#4A3525]">
-                    Bữa ngon cho {pet.name || 'Mochi'} (Đổi phiên chăm = Combo x2 Xu)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTray(null)}
-                    className="text-xs font-black text-[#7D6352]"
-                  >
-                    Đóng
-                  </button>
-                </div>
-                <div className="grid grid-cols-4 gap-2">
-                  {FOOD_CATALOG.map((food) => (
-                    <button
-                      key={food.id}
-                      type="button"
-                      onClick={() => handleFeedPet(food)}
-                      className="tactile-btn p-2 rounded-2xl bg-[#FFFDF9] border-[1.8px] border-[#4A3525] flex flex-col items-center text-center"
-                    >
-                      <FoodSvgIcon foodId={food.id} className="w-10 h-10" />
-                      <span className="text-[10.5px] font-black text-[#4A3525] mt-1 leading-tight line-clamp-1">
-                        {food.name}
-                      </span>
-                      <span className="text-[10px] font-extrabold text-[#E87A4D] mt-0.5 tabular-nums">
-                        {food.price === 0 ? 'Miễn phí' : `${food.price} Xu`}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {/* Khay trượt nhanh: Chăm Sóc */}
-            {activeTray === 'care' && (
-              <motion.div
-                initial={{ opacity: 0, y: 16, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 16, scale: 0.96 }}
-                className="pointer-events-auto cozy-glass rounded-[26px] p-3 border-[2.2px] border-[#4A3525]"
-              >
-                <div className="flex items-center justify-between mb-2 px-1">
-                  <span className="text-xs font-black text-[#4A3525]">
-                    Chăm sóc & Dọn dẹp Tổ Ấm
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTray(null)}
-                    className="text-xs font-black text-[#7D6352]"
-                  >
-                    Đóng
-                  </button>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleCareAction('bath')}
-                    className="tactile-btn p-2.5 rounded-2xl bg-[#FFFDF9] border-[1.8px] border-[#4A3525] flex flex-col items-center"
-                  >
-                    <Bath className="w-5 h-5 text-[#4A3525] mb-1" />
-                    <span className="text-xs font-black text-[#4A3525]">Tắm Thơm</span>
-                    <span className="text-[10px] font-bold text-[#7D6352]">Sạch 100%</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleCareAction('clean_all')}
-                    className="tactile-btn p-2.5 rounded-2xl bg-[#FFFDF9] border-[1.8px] border-[#4A3525] flex flex-col items-center"
-                  >
-                    <Sparkles className="w-5 h-5 text-[#5EA87A] mb-1" />
-                    <span className="text-xs font-black text-[#4A3525]">Dọn Phòng</span>
-                    <span className="text-[10px] font-bold text-[#7D6352]">Quét sạch bụi</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleCareAction('toggle_sleep')}
-                    className="tactile-btn p-2.5 rounded-2xl bg-[#FFFDF9] border-[1.8px] border-[#4A3525] flex flex-col items-center"
-                  >
-                    {pet.isSleeping ? (
-                      <Sun className="w-5 h-5 text-[#E87A4D] mb-1" />
-                    ) : (
-                      <Moon className="w-5 h-5 text-[#4A3525] mb-1" />
-                    )}
-                    <span className="text-xs font-black text-[#4A3525]">
-                      {pet.isSleeping ? 'Bật Đèn Dậy' : 'Tắt Đèn Ngủ'}
-                    </span>
-                    <span className="text-[10px] font-bold text-[#7D6352]">
-                      +15 Năng lượng/h
-                    </span>
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* THANH 4 CHỈ SỐ TINH GỌN (4 viên thuốc mini ngang xếp sát trên Dock) */}
-          <div className="pointer-events-auto grid grid-cols-4 gap-1.5">
+        <div className="mt-2 flex flex-col gap-1.5 shrink-0 z-[40]">
+          {/* THANH 4 CHỈ SỐ TINH GỌN */}
+          <div className="grid grid-cols-4 gap-1.5">
             {statItems.map((st) => {
               const IconComp = st.icon;
               const isLow = st.value < 30;
@@ -1050,20 +1042,20 @@ export default function App() {
             })}
           </div>
 
-          {/* TACTILE BOTTOM DOCK (5 nút thao tác lớn có độ nổi cơ học mềm) */}
-          <nav className="pointer-events-auto cozy-glass rounded-[28px] p-1.5 border-[2.4px] border-[#4A3525] grid grid-cols-5 gap-1.5">
+          {/* TACTILE BOTTOM DOCK */}
+          <nav className="cozy-glass rounded-[26px] p-1.5 border-[2.4px] border-[#4A3525] grid grid-cols-5 gap-1.5">
             <button
               type="button"
               onClick={() =>
                 setActiveTray(activeTray === 'feed' ? null : 'feed')
               }
-              className={`tactile-btn py-2 rounded-[20px] border-[1.8px] border-[#4A3525] flex flex-col items-center justify-center gap-0.5 ${
+              className={`tactile-btn py-2 rounded-[18px] border-[1.8px] border-[#4A3525] flex flex-col items-center justify-center gap-0.5 ${
                 activeTray === 'feed'
                   ? 'bg-[#FFE082] text-[#4A3525]'
                   : 'bg-[#FFFDF9] text-[#4A3525]'
               }`}
             >
-              <Utensils className="w-4.5 h-4.5" />
+              <Utensils className="w-4 h-4" />
               <span className="text-[10.5px] font-black">Cho ăn</span>
             </button>
 
@@ -1072,17 +1064,16 @@ export default function App() {
               onClick={() =>
                 setActiveTray(activeTray === 'care' ? null : 'care')
               }
-              className={`tactile-btn py-2 rounded-[20px] border-[1.8px] border-[#4A3525] flex flex-col items-center justify-center gap-0.5 ${
+              className={`tactile-btn py-2 rounded-[18px] border-[1.8px] border-[#4A3525] flex flex-col items-center justify-center gap-0.5 ${
                 activeTray === 'care'
                   ? 'bg-[#88C9A1] text-[#4A3525]'
                   : 'bg-[#FFFDF9] text-[#4A3525]'
               }`}
             >
-              <Sparkles className="w-4.5 h-4.5" />
+              <Sparkles className="w-4 h-4" />
               <span className="text-[10.5px] font-black">Chăm sóc</span>
             </button>
 
-            {/* Nút mở CHẾ ĐỘ TRANG TRÍ PHÒNG TRỰC QUAN (LIVE DECORATOR STUDIO) */}
             <button
               type="button"
               onClick={() => {
@@ -1090,9 +1081,9 @@ export default function App() {
                 setPreviewEquipped(null);
                 setIsDecoratorMode(true);
               }}
-              className="tactile-btn py-2 rounded-[20px] border-[1.8px] border-[#4A3525] bg-[#FF9B71] text-[#4A3525] flex flex-col items-center justify-center gap-0.5"
+              className="tactile-btn py-2 rounded-[18px] border-[1.8px] border-[#4A3525] bg-[#FF9B71] text-[#4A3525] flex flex-col items-center justify-center gap-0.5"
             >
-              <Palette className="w-4.5 h-4.5" />
+              <Palette className="w-4 h-4" />
               <span className="text-[10.5px] font-black">Trang trí</span>
             </button>
 
@@ -1102,9 +1093,9 @@ export default function App() {
                 setActiveTray(null);
                 setActiveModal('chat');
               }}
-              className="tactile-btn py-2 rounded-[20px] border-[1.8px] border-[#4A3525] bg-[#FFB7C5] text-[#4A3525] flex flex-col items-center justify-center gap-0.5"
+              className="tactile-btn py-2 rounded-[18px] border-[1.8px] border-[#4A3525] bg-[#FFB7C5] text-[#4A3525] flex flex-col items-center justify-center gap-0.5"
             >
-              <MessageCircleHeart className="w-4.5 h-4.5" />
+              <MessageCircleHeart className="w-4 h-4" />
               <span className="text-[10.5px] font-black">Trò chuyện</span>
             </button>
 
@@ -1114,9 +1105,9 @@ export default function App() {
                 setActiveTray(null);
                 setActiveModal('log');
               }}
-              className="tactile-btn py-2 rounded-[20px] border-[1.8px] border-[#4A3525] bg-[#FFFDF9] text-[#4A3525] flex flex-col items-center justify-center gap-0.5"
+              className="tactile-btn py-2 rounded-[18px] border-[1.8px] border-[#4A3525] bg-[#FFFDF9] text-[#4A3525] flex flex-col items-center justify-center gap-0.5"
             >
-              <BookOpen className="w-4.5 h-4.5" />
+              <BookOpen className="w-4 h-4" />
               <span className="text-[10.5px] font-black">Nhật ký</span>
             </button>
           </nav>
