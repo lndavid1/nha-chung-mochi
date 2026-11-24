@@ -6,7 +6,10 @@ import {
   getTimeOfDay,
   resolvePetEmotion,
   normalizeEquippedRoom,
-  ROOM_SLOTS
+  normalizeKitchenSlots,
+  normalizeBathroomSlots,
+  ROOM_SLOTS_BY_ROOM,
+  ROOM_LIST
 } from '../utils/gameLogic';
 import { WallBackdrop, FloorBackdrop } from './furniture/WallsAndFloors';
 import { WindowSvg } from './furniture/Windows';
@@ -15,6 +18,24 @@ import { RugSvg } from './furniture/Rugs';
 import { PlantSvg } from './furniture/Plants';
 import { DecorFurnitureSvg } from './furniture/DecorFurniture';
 import { WallDecorSvg } from './furniture/WallDecor';
+import {
+  KitchenWallBackdrop,
+  KitchenFloorBackdrop,
+  FridgeSvg,
+  StoveCounterSvg,
+  KitchenDecorSvg,
+  DiningTableSvg,
+  PetBowlSvg
+} from './furniture/KitchenFurniture';
+import {
+  BathWallBackdrop,
+  BathFloorBackdrop,
+  VanityMirrorSvg,
+  BathDecorSvg,
+  BathtubSvg,
+  BathPropSvg,
+  BathMatSvg
+} from './furniture/BathroomFurniture';
 import PetAvatar from './pet/PetAvatar';
 import RoomLighting, { SunbeamOverlay } from './RoomLighting';
 import SmartAsset from './common/SmartAsset';
@@ -33,6 +54,9 @@ import SmartAsset from './common/SmartAsset';
  */
 export default function RoomStage({
   roomData,
+  currentRoom = 'living',
+  onChangeRoom,
+  activeActionEvent = null,
   previewEquipped = null,
   isDecoratorMode = false,
   activeDecoratorSlot = 'wall',
@@ -61,11 +85,14 @@ export default function RoomStage({
   const [fairyLightsOn, setFairyLightsOn] = useState(true);
   const [isPetted, setIsPetted] = useState(false);
   const [onBedByTap, setOnBedByTap] = useState(false);
+  const [stoveSteaming, setStoveSteaming] = useState(false);
+  const [mirrorWiped, setMirrorWiped] = useState(false);
+  const [bathBubbles, setBathBubbles] = useState([]);
+  const [isEatingAnim, setIsEatingAnim] = useState(false);
+  const [isBathingAnim, setIsBathingAnim] = useState(false);
   const [nowDate, setNowDate] = useState(() => new Date());
 
   // Tọa độ thú cưng theo hệ trục (x%, y% từ đỉnh top container)
-  // Vùng đi dạo hợp lệ trên sàn: x từ 22% -> 78%, y từ 66% -> 76%
-  // Khi lên giường ngủ: x = 45%, y = 57%
   const [petPos, setPetPos] = useState({
     x: 50,
     y: 71,
@@ -76,6 +103,8 @@ export default function RoomStage({
 
   const stageRef = useRef(null);
   const petComboRef = useRef({ count: 0, last: 0 });
+  const swipeStartRef = useRef(null);
+  const lastRoomIdxRef = useRef(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -88,6 +117,62 @@ export default function RoomStage({
   const equipped = previewEquipped
     ? { ...baseEquipped, ...previewEquipped }
     : baseEquipped;
+
+  const baseKitchen = normalizeKitchenSlots(roomData?.kitchenSlots);
+  const kitchenEquipped = previewEquipped
+    ? { ...baseKitchen, ...previewEquipped }
+    : baseKitchen;
+
+  const baseBathroom = normalizeBathroomSlots(roomData?.bathroomSlots);
+  const bathroomEquipped = previewEquipped
+    ? { ...baseBathroom, ...previewEquipped }
+    : baseBathroom;
+
+  const currentRoomIndex = Math.max(
+    0,
+    ROOM_LIST.findIndex((r) => r.id === currentRoom)
+  );
+  const slideDir = currentRoomIndex >= lastRoomIdxRef.current ? 1 : -1;
+  useEffect(() => {
+    lastRoomIdxRef.current = currentRoomIndex;
+  }, [currentRoomIndex]);
+
+  const spawnBathBubbles = (count = 8) => {
+    const batch = Array.from({ length: count }).map((_, i) => ({
+      id: Date.now() + Math.random() + i,
+      x: 48 + Math.random() * 40,
+      y: 46 + Math.random() * 14,
+      size: 10 + Math.random() * 14,
+      delay: i * 0.08
+    }));
+    setBathBubbles((prev) => [...prev.slice(-14), ...batch]);
+    setTimeout(() => {
+      setBathBubbles((prev) => prev.filter((b) => !batch.some((x) => x.id === b.id)));
+    }, 1800);
+  };
+
+  // Xử lý hiệu ứng hành động theo phòng (Cho ăn ở Bếp / Tắm bồn ở Phòng Tắm)
+  useEffect(() => {
+    if (!activeActionEvent?.id) return;
+    if (activeActionEvent.type === 'feed') {
+      setIsEatingAnim(true);
+      const t = setTimeout(() => setIsEatingAnim(false), 3200);
+      return () => clearTimeout(t);
+    }
+    if (activeActionEvent.type === 'bath') {
+      setIsBathingAnim(true);
+      spawnBathBubbles(10);
+      const bInterval = setInterval(() => spawnBathBubbles(6), 1100);
+      const t = setTimeout(() => {
+        setIsBathingAnim(false);
+        clearInterval(bInterval);
+      }, 4000);
+      return () => {
+        clearTimeout(t);
+        clearInterval(bInterval);
+      };
+    }
+  }, [activeActionEvent?.id, activeActionEvent?.type]);
 
   const pet = roomData?.pet || {};
   const stickyNote = roomData?.stickyNote || {};
@@ -126,32 +211,53 @@ export default function RoomStage({
     return () => clearInterval(interval);
   }, [aiBubble?.dialogue, aiBubble?.updatedAt]);
 
-  // Chu kỳ sống tự nhiên của Thú cưng:
-  // - Khi ngủ / energy < 25 / người chơi bấm vào giường -> đi về tâm giường (x: 45%, y: 57%)
-  // - Khi thức -> đi dạo tự do trên vùng sàn quanh thảm (x: 24% -> 76%, y: 66% -> 75%)
+  // Chu kỳ sống tự nhiên của Thú cưng theo từng phòng:
+  // - living: ngủ/giường (36%, 54%), đi dạo trên sàn (24..76%, 66..75%)
+  // - kitchen: bình thường (52%, 69%), đang ăn (68%, 69%) sát bát ăn
+  // - bathroom: bình thường trên thảm (42%, 70%), đang tắm nhảy vào bồn (66%, 50%)
   useEffect(() => {
+    if (currentRoom === 'kitchen') {
+      if (isEatingAnim) {
+        setPetPos({ x: 68, y: 69, facingLeft: false, isWalking: false });
+      } else {
+        setPetPos({ x: 52, y: 69, facingLeft: false, isWalking: false });
+      }
+      return;
+    }
+
+    if (currentRoom === 'bathroom') {
+      if (isBathingAnim) {
+        setPetPos({ x: 66, y: 50, facingLeft: false, isWalking: false });
+      } else {
+        setPetPos({ x: 42, y: 70, facingLeft: false, isWalking: false });
+      }
+      return;
+    }
+
     const shouldGoToBed = Boolean(
       pet.isSleeping || (pet.energy ?? 80) < 25 || onBedByTap
     );
     if (shouldGoToBed) {
       setPetPos((prev) => ({
-        x: 45,
-        y: 57,
-        facingLeft: prev.x > 45,
+        x: 36,
+        y: 54,
+        facingLeft: prev.x > 36,
         isWalking: false
       }));
       return;
     }
 
-    // Nếu vừa rời giường thì bước xuống thảm
+    // Nếu vừa rời giường hoặc mới từ phòng khác qua thì bước xuống thảm giữa
     setPetPos((prev) =>
-      prev.y < 63 ? { x: 50, y: 71, facingLeft: false, isWalking: false } : prev
+      prev.y < 63 || prev.x > 76 || prev.x < 24
+        ? { x: 50, y: 71, facingLeft: false, isWalking: false }
+        : prev
     );
 
     const walkTimer = setInterval(() => {
       setPetPos((prev) => {
         const nextX = 24 + Math.floor(Math.random() * 52); // 24% -> 76%
-        const nextY = 66 + Math.floor(Math.random() * 9);  // 66% -> 75%
+        const nextY = 66 + Math.floor(Math.random() * 9); // 66% -> 75%
         const goingLeft = nextX < prev.x;
         return {
           x: nextX,
@@ -167,7 +273,7 @@ export default function RoomStage({
     }, 9000);
 
     return () => clearInterval(walkTimer);
-  }, [pet.isSleeping, pet.energy, onBedByTap]);
+  }, [currentRoom, isEatingAnim, isBathingAnim, pet.isSleeping, pet.energy, onBedByTap]);
 
   const spawnBurst = (xPercent, yPercent, label, icon = '✨') => {
     const id = Date.now() + Math.random();
@@ -269,6 +375,85 @@ export default function RoomStage({
     if (onCoopPlayBall) onCoopPlayBall();
   };
 
+  // Tương tác nội thất Nhà Bếp
+  const handleTouchFridge = () => {
+    soundEngine.play('paper');
+    spawnBurst(17, 36, 'Giấy nhớ tủ lạnh!', '📝');
+    if (onOpenStickyNote) onOpenStickyNote();
+  };
+
+  const handleTouchStove = () => {
+    soundEngine.play('teaSteam');
+    setStoveSteaming(true);
+    spawnBurst(64, 34, 'Thơm lừng~', '🍲');
+    setTimeout(() => setStoveSteaming(false), 1800);
+  };
+
+  const handleTouchDiningTable = () => {
+    soundEngine.play('tap');
+    spawnBurst(22, 56, 'Bánh ngọt ấm~', '🍰');
+  };
+
+  const handleTouchPetBowl = () => {
+    soundEngine.play('eat');
+    spawnBurst(81, 64, 'Măm măm~', '🥣');
+  };
+
+  // Tương tác nội thất Phòng Tắm
+  const handleTouchVanity = () => {
+    soundEngine.play('sparkle');
+    setMirrorWiped(true);
+    spawnBurst(22, 28, 'Sáng bóng!', '✨');
+    setTimeout(() => setMirrorWiped(false), 1400);
+  };
+
+  const handleTouchBathDecor = () => {
+    soundEngine.play('tap');
+    spawnBurst(76, 22, 'Thơm oải hương~', '🫧');
+  };
+
+  const handleTouchBathtub = () => {
+    soundEngine.play('bath');
+    spawnBathBubbles(9);
+    spawnBurst(68, 44, 'Bong bóng!', '🫧');
+  };
+
+  const handleTouchBathProp = () => {
+    soundEngine.play('tap');
+    spawnBurst(16, 52, 'Khăn bông êm~', '🦆');
+  };
+
+  // Vuốt ngang Trái/Phải trên nền phòng để chuyển phòng mượt
+  const handleStageTouchStart = (e) => {
+    if (isDecoratorMode || isTrayOpen || !onChangeRoom) return;
+    if (e.touches.length !== 1) return;
+    swipeStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      t: Date.now()
+    };
+  };
+
+  const handleStageTouchEnd = (e) => {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start || isDecoratorMode || isTrayOpen || !onChangeRoom) return;
+    const touch = e.changedTouches?.[0];
+    if (!touch) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    const dt = Date.now() - start.t;
+    if (dt < 550 && Math.abs(dx) > 54 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      const nextIdx = dx < 0 ? currentRoomIndex + 1 : currentRoomIndex - 1;
+      if (nextIdx >= 0 && nextIdx < ROOM_LIST.length) {
+        soundEngine.play('sheetOpen');
+        onChangeRoom(ROOM_LIST[nextIdx].id);
+      }
+    }
+  };
+
+  const activeSlotsForRoom = ROOM_SLOTS_BY_ROOM[currentRoom] || ROOM_SLOTS_BY_ROOM.living;
+
   const isFairyWallDecor =
     !equipped.wallDecor || equipped.wallDecor === 'wdecor_fairy';
 
@@ -282,17 +467,31 @@ export default function RoomStage({
   return (
     <div
       ref={stageRef}
-      className="relative w-full h-full overflow-hidden select-none bg-[#FFF8F0]"
+      onTouchStart={handleStageTouchStart}
+      onTouchEnd={handleStageTouchEnd}
+      className="relative w-full h-full overflow-hidden select-none bg-[#C7A688]"
     >
-      {/* ===================================================================== */}
-      {/* Z-[0]: TƯỜNG (top: 0% -> 50%) + PHÀO CHỈ (mốc 50%) + SÀN (50% -> 100%) */}
-      {/* ===================================================================== */}
-      <div className="absolute inset-x-0 top-0 h-[50%] z-[0]">
-        <WallBackdrop wallId={equipped.wall} />
-      </div>
-      <div className="absolute inset-x-0 top-[50%] h-[50%] z-[0]">
-        <FloorBackdrop floorId={equipped.floor} />
-      </div>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={currentRoom}
+          initial={{ opacity: 0.4, x: slideDir * 36 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0.4, x: -slideDir * 36 }}
+          transition={{ duration: 0.24, ease: 'easeOut' }}
+          className="absolute inset-0"
+        >
+          {/* ===================================================================== */}
+          {/* PHÒNG 1: PHÒNG KHÁCH (LIVING) — GIỮ NGUYÊN 100% TỌA ĐỘ CŨ             */}
+          {/* ===================================================================== */}
+          {currentRoom === 'living' && (
+            <>
+              {/* Z-[0]: TƯỜNG (top: 0% -> 50%) + PHÀO CHỈ + SÀN (50% -> 100%) */}
+              <div className="absolute inset-x-0 top-0 h-[50%] z-[0]">
+                <WallBackdrop wallId={equipped.wall} />
+              </div>
+              <div className="absolute inset-x-0 top-[50%] h-[50%] z-[0]">
+                <FloorBackdrop floorId={equipped.floor} />
+              </div>
 
       {/* ===================================================================== */}
       {/* Z-[10]: KHU VỰC ĐỒ TRÊN TƯỜNG (top: 0% -> 50%)                        */}
@@ -614,6 +813,257 @@ export default function RoomStage({
           </motion.button>
         );
       })}
+            </>
+          )}
+
+          {/* ===================================================================== */}
+          {/* PHÒNG 2: NHÀ BẾP (KITCHEN) — 6 SLOT KHÓA CỨNG CHUẨN 390x844           */}
+          {/* ===================================================================== */}
+          {currentRoom === 'kitchen' && (
+            <>
+              <div className="absolute inset-x-0 top-0 h-[50%] z-[0]">
+                <SmartAsset
+                  category="kitchen"
+                  assetId={kitchenEquipped.kitchenWall}
+                  showShadow={false}
+                  className="w-full h-full object-cover"
+                  fallbackSvg={<KitchenWallBackdrop wallId={kitchenEquipped.kitchenWall} />}
+                />
+              </div>
+              <div className="absolute inset-x-0 top-[50%] h-[50%] z-[0]">
+                <SmartAsset
+                  category="kitchen"
+                  assetId={kitchenEquipped.kitchenFloor}
+                  showShadow={false}
+                  className="w-full h-full object-cover"
+                  fallbackSvg={<KitchenFloorBackdrop floorId={kitchenEquipped.kitchenFloor} />}
+                />
+              </div>
+
+              {/* Kệ gia vị / Dụng cụ treo tường phía trên bếp: left 40%, top 16%, width 48% */}
+              <button
+                type="button"
+                onClick={() => {
+                  soundEngine.play('tap');
+                  spawnBurst(64, 18, 'Gia vị thơm~', '🌿');
+                }}
+                style={{ left: '40%', top: '16%', width: '48%' }}
+                className="absolute z-[10] active:scale-95 transition-transform focus:outline-none"
+                title="Kệ gia vị bếp"
+              >
+                <SmartAsset
+                  category="kitchen"
+                  assetId={kitchenEquipped.kitchenDecor}
+                  alt="Kệ bếp"
+                  showShadow={false}
+                  className="w-full h-auto object-contain"
+                  fallbackSvg={<KitchenDecorSvg decorId={kitchenEquipped.kitchenDecor} />}
+                />
+              </button>
+
+              {/* Tủ lạnh vintage - Góc Sau-Trái: left 4%, top 25%, width 27% */}
+              <motion.button
+                type="button"
+                onClick={handleTouchFridge}
+                whileTap={{ scale: 0.96 }}
+                style={{ left: '4%', top: '25%', width: '27%' }}
+                className="absolute z-[20] focus:outline-none cursor-pointer"
+                title="Chạm tủ lạnh để xem Giấy nhớ"
+              >
+                <SmartAsset
+                  category="kitchen"
+                  assetId={kitchenEquipped.fridge}
+                  alt="Tủ lạnh"
+                  showShadow={true}
+                  fallbackSvg={<FridgeSvg fridgeId={kitchenEquipped.fridge} />}
+                />
+              </motion.button>
+
+              {/* Hệ tủ bếp & Bếp nấu - Góc Sau-Phải: left 34%, top 34%, width 62% */}
+              <motion.button
+                type="button"
+                onClick={handleTouchStove}
+                whileTap={{ scale: 0.98 }}
+                style={{ left: '34%', top: '34%', width: '62%' }}
+                className="absolute z-[20] focus:outline-none cursor-pointer"
+                title="Chạm bếp để nấu sôi súp ấm"
+              >
+                <SmartAsset
+                  category="kitchen"
+                  assetId={kitchenEquipped.stoveCounter}
+                  alt="Tủ bếp & bếp nấu"
+                  showShadow={true}
+                  fallbackSvg={
+                    <StoveCounterSvg
+                      stoveId={kitchenEquipped.stoveCounter}
+                      steaming={stoveSteaming}
+                    />
+                  }
+                />
+              </motion.button>
+
+              {/* Bàn ăn mini - Góc Trái-Trước trên sàn: left 4%, top 57%, width 36% */}
+              <motion.button
+                type="button"
+                onClick={handleTouchDiningTable}
+                whileTap={{ scale: 0.96 }}
+                style={{ left: '4%', top: '57%', width: '36%' }}
+                className="absolute z-[25] focus:outline-none cursor-pointer"
+                title="Bàn ăn mini"
+              >
+                <SmartAsset
+                  category="kitchen"
+                  assetId={kitchenEquipped.diningTable}
+                  alt="Bàn ăn mini"
+                  showShadow={true}
+                  fallbackSvg={<DiningTableSvg tableId={kitchenEquipped.diningTable} />}
+                />
+              </motion.button>
+
+              {/* Góc ăn của Bé (Bát ăn đôi) - Góc Phải-Trước trên sàn: right 6%, top 66%, width 26% */}
+              <motion.button
+                type="button"
+                onClick={handleTouchPetBowl}
+                whileTap={{ scale: 0.95 }}
+                style={{ right: '6%', top: '66%', width: '26%' }}
+                className="absolute z-[25] focus:outline-none cursor-pointer"
+                title="Bát ăn của bé"
+              >
+                <SmartAsset
+                  category="kitchen"
+                  assetId={kitchenEquipped.petBowl}
+                  alt="Bát ăn thú cưng"
+                  showShadow={false}
+                  fallbackSvg={<PetBowlSvg bowlId={kitchenEquipped.petBowl} />}
+                />
+              </motion.button>
+            </>
+          )}
+
+          {/* ===================================================================== */}
+          {/* PHÒNG 3: PHÒNG TẮM (BATHROOM) — 6 SLOT KHÓA CỨNG CHUẨN 390x844        */}
+          {/* ===================================================================== */}
+          {currentRoom === 'bathroom' && (
+            <>
+              <div className="absolute inset-x-0 top-0 h-[50%] z-[0]">
+                <SmartAsset
+                  category="bathroom"
+                  assetId={bathroomEquipped.bathWall}
+                  showShadow={false}
+                  className="w-full h-full object-cover"
+                  fallbackSvg={<BathWallBackdrop wallId={bathroomEquipped.bathWall} />}
+                />
+              </div>
+              <div className="absolute inset-x-0 top-[50%] h-[50%] z-[0]">
+                <SmartAsset
+                  category="bathroom"
+                  assetId={bathroomEquipped.bathFloor}
+                  showShadow={false}
+                  className="w-full h-full object-cover"
+                  fallbackSvg={<BathFloorBackdrop floorId={bathroomEquipped.bathFloor} />}
+                />
+              </div>
+
+              {/* Bồn rửa mặt & Gương treo - Góc Sau-Trái: left 5%, top 23%, width 34% */}
+              <motion.button
+                type="button"
+                onClick={handleTouchVanity}
+                whileTap={{ scale: 0.96 }}
+                style={{ left: '5%', top: '23%', width: '34%' }}
+                className="absolute z-[20] focus:outline-none cursor-pointer"
+                title="Chạm gương để lau sáng bóng"
+              >
+                <SmartAsset
+                  category="bathroom"
+                  assetId={bathroomEquipped.vanityMirror}
+                  alt="Gương & chậu rửa"
+                  showShadow={true}
+                  fallbackSvg={
+                    <VanityMirrorSvg
+                      vanityId={bathroomEquipped.vanityMirror}
+                      wiped={mirrorWiped}
+                    />
+                  }
+                />
+              </motion.button>
+
+              {/* Kệ khăn / Cửa sổ kính mờ - Góc Tường Phải: right 5%, top 17%, width 38% */}
+              <button
+                type="button"
+                onClick={handleTouchBathDecor}
+                style={{ right: '5%', top: '17%', width: '38%' }}
+                className="absolute z-[10] active:scale-95 transition-transform focus:outline-none"
+                title="Kệ khăn phòng tắm"
+              >
+                <SmartAsset
+                  category="bathroom"
+                  assetId={bathroomEquipped.bathDecor}
+                  alt="Kệ khăn phòng tắm"
+                  showShadow={false}
+                  className="w-full h-auto object-contain"
+                  fallbackSvg={<BathDecorSvg decorId={bathroomEquipped.bathDecor} />}
+                />
+              </button>
+
+              {/* Thảm chân bông - Giữa-Trái sàn trước: left 16%, top 68%, width 50% */}
+              <div
+                style={{ left: '16%', top: '68%', width: '50%' }}
+                className="absolute z-[20] pointer-events-none"
+              >
+                <SmartAsset
+                  category="bathroom"
+                  assetId={bathroomEquipped.bathMat}
+                  alt="Thảm chân bông"
+                  showShadow={false}
+                  className="w-full h-auto object-contain"
+                  fallbackSvg={<BathMatSvg matId={bathroomEquipped.bathMat} />}
+                />
+              </div>
+
+              {/* Đồ góc phòng tắm - Góc Trái-Giữa sàn: left 5%, top 54%, width 22% */}
+              <motion.button
+                type="button"
+                onClick={handleTouchBathProp}
+                whileTap={{ scale: 0.95 }}
+                style={{ left: '5%', top: '54%', width: '22%' }}
+                className="absolute z-[25] focus:outline-none cursor-pointer"
+                title="Đồ góc phòng tắm"
+              >
+                <SmartAsset
+                  category="bathroom"
+                  assetId={bathroomEquipped.bathProp}
+                  alt="Đồ góc phòng tắm"
+                  showShadow={true}
+                  fallbackSvg={<BathPropSvg propId={bathroomEquipped.bathProp} />}
+                />
+              </motion.button>
+
+              {/* Bồn tắm - Góc Phải-Giữa sàn: right 5%, top 46%, width 55% */}
+              <motion.button
+                type="button"
+                onClick={handleTouchBathtub}
+                whileTap={{ scale: 0.98 }}
+                style={{ right: '5%', top: '46%', width: '55%' }}
+                className="absolute z-[25] focus:outline-none cursor-pointer"
+                title="Chạm bồn tắm để thổi bong bóng xà phòng"
+              >
+                <SmartAsset
+                  category="bathroom"
+                  assetId={bathroomEquipped.bathtub}
+                  alt="Bồn tắm"
+                  showShadow={true}
+                  fallbackSvg={
+                    <BathtubSvg
+                      tubId={bathroomEquipped.bathtub}
+                      showFrontFoam={isBathingAnim}
+                    />
+                  }
+                />
+              </motion.button>
+            </>
+          )}
+        </motion.div>
+      </AnimatePresence>
 
       {/* ===================================================================== */}
       {/* Z-[30]: THÚ CƯNG SỐNG ĐỘNG (PetAvatar)                                */}
@@ -701,20 +1151,83 @@ export default function RoomStage({
         >
           <PetAvatar
             type={pet.type || 'cat'}
-            emotion={activeEmotion}
+            emotion={isBathingAnim || isEatingAnim ? 'happy' : activeEmotion}
             isSleeping={
               calibratorEmotionOverride
                 ? calibratorEmotionOverride === 'sleepy'
-                : pet.isSleeping
+                : currentRoom === 'living' && pet.isSleeping
             }
             accessoryId={equipped.accessory}
             customAnchors={customAnchors}
-            isPetted={isPetted}
+            isPetted={isPetted || isEatingAnim || isBathingAnim}
             facingLeft={petPos.facingLeft}
             isWalking={petPos.isWalking}
           />
         </button>
+
+        {/* Lớp bọt xà phòng trắng mịn + vịt cao su che ngang bụng khi bé đang tắm trong bồn */}
+        {currentRoom === 'bathroom' && isBathingAnim && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.7 }}
+            animate={{ opacity: 1, scale: [0.96, 1.04, 0.96] }}
+            transition={{ repeat: Infinity, duration: 1.4 }}
+            className="pointer-events-none absolute -bottom-2 inset-x-0 flex justify-center z-[34]"
+          >
+            <svg viewBox="0 0 130 46" className="w-28 h-10 overflow-visible">
+              <g fill="#FFFDF9" stroke="#4A3525" strokeWidth="2.2">
+                <circle cx="24" cy="28" r="13" />
+                <circle cx="46" cy="24" r="16" />
+                <circle cx="70" cy="25" r="15" />
+                <circle cx="92" cy="24" r="15" />
+                <circle cx="110" cy="29" r="11" />
+              </g>
+              {/* Chú vịt cao su vàng ngồi trên bọt */}
+              <g transform="translate(82, 4)">
+                <ellipse cx="14" cy="18" rx="10" ry="7" fill="#FFE066" stroke="#4A3525" strokeWidth="2" />
+                <circle cx="9" cy="10" r="6.5" fill="#FFE066" stroke="#4A3525" strokeWidth="2" />
+                <path d="M1 10 L5 8 L5 12 Z" fill="#FF9B71" stroke="#4A3525" strokeWidth="1.5" />
+                <circle cx="8" cy="9" r="1.2" fill="#4A3525" />
+              </g>
+            </svg>
+          </motion.div>
+        )}
+
+        {/* Hiệu ứng nhai đồ ăn khi đang ở Bếp */}
+        {currentRoom === 'kitchen' && isEatingAnim && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: [0.8, 1, 0.8], y: [-2, -8, -2] }}
+            transition={{ repeat: Infinity, duration: 0.8 }}
+            className="pointer-events-none absolute -top-5 px-2.5 py-0.5 rounded-full bg-[#FFE082] border-[1.8px] border-[#4A3525] text-[10px] font-black text-[#4A3525] shadow"
+          >
+            Ngon quá~ 🍽️
+          </motion.div>
+        )}
       </motion.div>
+
+      {/* Bong bóng xà phòng trong suốt bay lên trong Phòng Tắm */}
+      {currentRoom === 'bathroom' && (
+        <div className="pointer-events-none absolute inset-0 z-[36] overflow-hidden">
+          <AnimatePresence>
+            {bathBubbles.map((b) => (
+              <motion.div
+                key={b.id}
+                initial={{ opacity: 0.85, y: 0, scale: 0.6 }}
+                animate={{ opacity: 0, y: -120, scale: 1.25 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.6, delay: b.delay, ease: 'easeOut' }}
+                style={{
+                  left: `${b.x}%`,
+                  top: `${b.y}%`,
+                  width: b.size,
+                  height: b.size
+                }}
+                className="absolute rounded-full border-[1.6px] border-[#78C2E6] bg-white/60 shadow-inner"
+              />
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
 
       {/* ===================================================================== */}
       {/* Z-[40]: LỚP PHỦ ÁNH SÁNG NGÀY / HOÀNG HÔN / ĐÊM (RoomLighting)        */}
@@ -831,7 +1344,7 @@ export default function RoomStage({
             exit={{ opacity: 0 }}
             className="absolute inset-0 z-[50] pointer-events-none"
           >
-            {ROOM_SLOTS.map((slot) => {
+            {activeSlotsForRoom.map((slot) => {
               const isSelected = activeDecoratorSlot === slot.id;
               return (
                 <button

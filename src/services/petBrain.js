@@ -292,6 +292,12 @@ export function generateOfflinePetResponse({
   };
 }
 
+const ROOM_NAME_VI = {
+  living: 'Phòng khách',
+  kitchen: 'Nhà bếp',
+  bathroom: 'Phòng tắm'
+};
+
 // Xây dựng Context Snapshot siêu gọn (< 350 token)
 function buildCompactContextSnapshot({
   roomData,
@@ -299,12 +305,14 @@ function buildCompactContextSnapshot({
   triggerType,
   actionDetail,
   userMessage,
-  bothOnline
+  bothOnline,
+  currentRoom = 'living'
 }) {
   const pet = roomData?.pet || {};
   const p1 = roomData?.players?.player1?.name || 'Chủ 1';
   const p2 = roomData?.players?.player2?.name || 'Chủ 2 (chưa vào)';
   const nowStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  const roomLabel = ROOM_NAME_VI[currentRoom] || 'Phòng khách';
   const recentLogs = (roomData?.logs || [])
     .slice(0, 4)
     .map((l) => `${l.actor}: ${l.action}`)
@@ -315,13 +323,13 @@ function buildCompactContextSnapshot({
       : `${roomData?.stickyNote?.text || ''} (bởi ${roomData?.stickyNote?.author || p1})`;
 
   return [
-    `Giờ: ${nowStr}. Tên thú: ${pet.name || 'Mochi'} (${pet.type || 'cat'}).`,
+    `Giờ: ${nowStr}. Đang ở: ${roomLabel}. Tên thú: ${pet.name || 'Mochi'} (${pet.type || 'cat'}).`,
     `2 chủ nhân: ${p1} & ${p2}. Cả 2 cùng online: ${bothOnline ? 'Có' : 'Không'}.`,
     `Chỉ số (0-100): Đói=${pet.hunger}, Vui=${pet.mood}, Sạch=${pet.hygiene}, Năng lượng=${pet.energy}, Đang ngủ=${pet.isSleeping ? 'Có' : 'Không'}.`,
     `Giấy nhớ trên tường: "${stickyText.slice(0, 120)}".`,
     `4 hoạt động gần nhất: ${recentLogs || 'Mới tạo phòng'}.`,
     `Ký ức thói quen: "${(roomData?.memorySummary || '').slice(0, 200)}".`,
-    `Sự kiện vừa xảy ra (${triggerType}) bởi ${actorName}: ${actionDetail || userMessage || 'Tương tác với thú cưng'}.`
+    `Sự kiện vừa xảy ra (${triggerType}) bởi ${actorName} tại ${roomLabel}: ${actionDetail || userMessage || 'Tương tác với thú cưng'}.`
   ].join('\n');
 }
 
@@ -454,7 +462,8 @@ export async function askPetBrain({
   actionDetail = '',
   userMessage = '',
   bothOnline = false,
-  sharedApiKey = ''
+  sharedApiKey = '',
+  currentRoom = 'living'
 }) {
   // Kiểm tra debounce nếu là hành động vuốt ve / cho ăn lặp lại
   if (shouldDebounceAiCall(triggerType)) {
@@ -487,7 +496,8 @@ export async function askPetBrain({
     triggerType,
     actionDetail,
     userMessage,
-    bothOnline
+    bothOnline,
+    currentRoom
   });
 
   const now = Date.now();

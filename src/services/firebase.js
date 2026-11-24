@@ -374,8 +374,8 @@ export async function updateRoomFields(roomId, updates) {
   writeLocalRoom(cleanId, next);
 }
 
-// Ghi nhận Live Presence (.info/connected + onDisconnect)
-export function setupLivePresence(roomId, playerRole) {
+// Ghi nhận Live Presence (.info/connected + onDisconnect) kèm phòng hiện tại (currentRoom)
+export function setupLivePresence(roomId, playerRole, initialRoom = 'living') {
   const { db, mode } = initFirebaseClient();
   const cleanId = roomId.trim().toUpperCase();
 
@@ -391,6 +391,7 @@ export function setupLivePresence(roomId, playerRole) {
         });
         update(playerStatusRef, {
           online: true,
+          currentRoom: initialRoom,
           lastSeen: Date.now()
         });
       }
@@ -409,11 +410,21 @@ export function setupLivePresence(roomId, playerRole) {
   if (playerRole) {
     updateRoomFields(cleanId, {
       [`players/${playerRole}/online`]: true,
+      [`players/${playerRole}/currentRoom`]: initialRoom,
       [`players/${playerRole}/lastSeen`]: Date.now()
     });
   }
 
   return () => {};
+}
+
+// Cập nhật phòng hiện tại của người chơi lên node Presence
+export function updatePlayerCurrentRoom(roomId, playerRole, currentRoom) {
+  if (!roomId || !playerRole || !currentRoom) return;
+  updateRoomFields(roomId, {
+    [`players/${playerRole}/currentRoom`]: currentRoom,
+    [`players/${playerRole}/lastSeen`]: Date.now()
+  }).catch(() => {});
 }
 
 // Mã hóa nhẹ XOR + Base64 để tùy chọn đồng bộ Gemini API Key trong phòng kín của 2 người

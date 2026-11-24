@@ -68,18 +68,79 @@ export const FOOD_CATALOG = [
   }
 ];
 
+// Danh sách 3 phòng liên thông
+export const ROOM_LIST = [
+  { id: 'living', label: 'Phòng khách', shortLabel: 'Phòng khách' },
+  { id: 'kitchen', label: 'Nhà bếp', shortLabel: 'Bếp' },
+  { id: 'bathroom', label: 'Phòng tắm', shortLabel: 'Phòng tắm' }
+];
+
 // Danh sách các Slot hiển thị trong Live Decorator Studio (kèm tọa độ Hotspot khớp chính xác hệ tọa độ khóa cứng)
 export const ROOM_SLOTS = [
-  { id: 'wall', label: 'Tường nhà', hotspot: { x: 22, y: 12 } },
+  { id: 'wall', label: 'Tường nhà', hotspot: { x: 22, y: 18 } },
   { id: 'floor', label: 'Sàn nhà', hotspot: { x: 84, y: 78 } },
   { id: 'window', label: 'Cửa sổ', hotspot: { x: 22, y: 26 } },
-  { id: 'bed', label: 'Giường thú', hotspot: { x: 45, y: 58 } },
+  { id: 'bed', label: 'Giường thú', hotspot: { x: 36, y: 55 } },
   { id: 'rug', label: 'Thảm sàn', hotspot: { x: 50, y: 74 } },
   { id: 'plant', label: 'Cây cảnh', hotspot: { x: 16, y: 50 } },
-  { id: 'decor', label: 'Nội thất', hotspot: { x: 80, y: 49 } },
-  { id: 'wallDecor', label: 'Treo tường', hotspot: { x: 52, y: 12 } },
+  { id: 'decor', label: 'Nội thất', hotspot: { x: 81, y: 49 } },
+  { id: 'wallDecor', label: 'Treo tường', hotspot: { x: 52, y: 17 } },
   { id: 'accessory', label: 'Phụ kiện thú', hotspot: { x: 50, y: 67 } }
 ];
+
+export const KITCHEN_SLOTS_META = [
+  { id: 'kitchenWall', label: 'Tường bếp', hotspot: { x: 24, y: 18 } },
+  { id: 'kitchenFloor', label: 'Sàn bếp', hotspot: { x: 52, y: 78 } },
+  { id: 'fridge', label: 'Tủ lạnh', hotspot: { x: 17, y: 40 } },
+  { id: 'stoveCounter', label: 'Tủ bếp', hotspot: { x: 64, y: 46 } },
+  { id: 'kitchenDecor', label: 'Kệ bếp', hotspot: { x: 64, y: 21 } },
+  { id: 'diningTable', label: 'Bàn ăn', hotspot: { x: 22, y: 66 } },
+  { id: 'petBowl', label: 'Bát ăn', hotspot: { x: 81, y: 72 } },
+  { id: 'accessory', label: 'Phụ kiện thú', hotspot: { x: 52, y: 68 } }
+];
+
+export const BATHROOM_SLOTS_META = [
+  { id: 'bathWall', label: 'Tường tắm', hotspot: { x: 24, y: 18 } },
+  { id: 'bathFloor', label: 'Sàn tắm', hotspot: { x: 50, y: 79 } },
+  { id: 'vanityMirror', label: 'Gương & chậu', hotspot: { x: 22, y: 36 } },
+  { id: 'bathDecor', label: 'Kệ khăn', hotspot: { x: 76, y: 24 } },
+  { id: 'bathtub', label: 'Bồn tắm', hotspot: { x: 68, y: 55 } },
+  { id: 'bathProp', label: 'Góc tắm', hotspot: { x: 16, y: 60 } },
+  { id: 'bathMat', label: 'Thảm bông', hotspot: { x: 41, y: 74 } },
+  { id: 'accessory', label: 'Phụ kiện thú', hotspot: { x: 42, y: 68 } }
+];
+
+export const ROOM_SLOTS_BY_ROOM = {
+  living: ROOM_SLOTS,
+  kitchen: KITCHEN_SLOTS_META,
+  bathroom: BATHROOM_SLOTS_META
+};
+
+export const KITCHEN_SLOT_IDS = [
+  'kitchenWall',
+  'kitchenFloor',
+  'fridge',
+  'stoveCounter',
+  'kitchenDecor',
+  'diningTable',
+  'petBowl'
+];
+
+export const BATHROOM_SLOT_IDS = [
+  'bathWall',
+  'bathFloor',
+  'vanityMirror',
+  'bathDecor',
+  'bathtub',
+  'bathProp',
+  'bathMat'
+];
+
+export function getSlotRoom(slotId) {
+  if (KITCHEN_SLOT_IDS.includes(slotId)) return 'kitchen';
+  if (BATHROOM_SLOT_IDS.includes(slotId)) return 'bathroom';
+  return 'living';
+}
 
 export const FURNITURE_CATALOG = {
   wall: [
@@ -148,6 +209,80 @@ export const FURNITURE_CATALOG = {
     { id: 'acc_glasses', slot: 'accessory', name: 'Kính Tròn Học Thức', price: 55, desc: 'Cặp kính gọng vàng tròn xoe trông cực kỳ uyên bác' },
     { id: 'acc_crown', slot: 'accessory', name: 'Vương Miện Hoàng Gia', price: 85, desc: 'Vương miện vàng đính ngọc hồng cho Boss quyền lực nhất nhà' },
     { id: 'acc_scarf', slot: 'accessory', name: 'Khăn Len Mùa Đông', price: 60, desc: 'Khăn quàng cổ đan len sọc kem-san hô ấm áp siêu cưng' }
+  ],
+
+  // ===== NHÀ BẾP (KITCHEN) =====
+  kitchenWall: [
+    { id: 'kwall_tile_cream', slot: 'kitchenWall', room: 'kitchen', name: 'Gạch Thẻ Kem Ấm', price: 0, desc: 'Gạch thẻ chữ nhật trắng kem ấm cúng chuẩn bếp châu Âu' },
+    { id: 'kwall_mint_tile', slot: 'kitchenWall', room: 'kitchen', name: 'Gạch Bông Xanh Mint', price: 45, desc: 'Gạch bông pastel xanh mint dịu mát điểm hoa văn nhỏ' },
+    { id: 'kwall_butter', slot: 'kitchenWall', room: 'kitchen', name: 'Tường Vàng Bơ Ấm', price: 40, desc: 'Tường sơn màu vàng bơ ấm áp mang hương thơm tiệm bánh' }
+  ],
+  kitchenFloor: [
+    { id: 'kfloor_checker', slot: 'kitchenFloor', room: 'kitchen', name: 'Gạch Caro Kem Nâu', price: 0, desc: 'Sàn gạch caro kem nâu cổ điển sạch sẽ dễ thương' },
+    { id: 'kfloor_oak', slot: 'kitchenFloor', room: 'kitchen', name: 'Sàn Gỗ Sồi Sáng', price: 45, desc: 'Ván gỗ sồi sáng ấm áp hài hòa với tủ bếp gỗ' },
+    { id: 'kfloor_terrazzo', slot: 'kitchenFloor', room: 'kitchen', name: 'Đá Terrazzo Ấm', price: 55, desc: 'Đá mài Terrazzo lấm tấm hạt cam đất và kem bơ' }
+  ],
+  fridge: [
+    { id: 'fridge_cream', slot: 'fridge', room: 'kitchen', name: 'Tủ Retro Kem Bo Tròn', price: 0, desc: 'Tủ lạnh Smeg màu kem cổ điển có tay nắm bạc và nam châm xinh' },
+    { id: 'fridge_mint', slot: 'fridge', room: 'kitchen', name: 'Tủ Lạnh Xanh Mint', price: 65, desc: 'Tủ lạnh pastel xanh bạc hà mát mắt đầy ắp đồ ăn vặt' },
+    { id: 'fridge_berry', slot: 'fridge', room: 'kitchen', name: 'Tủ Lạnh Hồng Dâu', price: 75, desc: 'Tủ lạnh hồng dâu ngọt ngào dán đầy sticker trái tim' }
+  ],
+  stoveCounter: [
+    { id: 'stove_oak', slot: 'stoveCounter', room: 'kitchen', name: 'Bếp Gỗ Sồi Nồi Súp', price: 0, desc: 'Hệ tủ bếp gỗ sồi ấm có nồi súp đang ninh thơm lừng' },
+    { id: 'stove_french', slot: 'stoveCounter', room: 'kitchen', name: 'Bếp Trắng Kiểu Pháp', price: 80, desc: 'Tủ bếp trắng kem phào chỉ tinh tế kèm chảo bánh kếp' },
+    { id: 'stove_sage', slot: 'stoveCounter', room: 'kitchen', name: 'Bếp Xanh Sage Ấm Trà', price: 85, desc: 'Tủ bếp xanh sage trầm dịu kèm ấm trà men sứ đun sôi' }
+  ],
+  kitchenDecor: [
+    { id: 'kdecor_spice', slot: 'kitchenDecor', room: 'kitchen', name: 'Kệ Gia Vị & Đĩa Gốm', price: 0, desc: 'Kệ gỗ bày lọ gia vị thủy tinh, đĩa gốm và cốc sứ pastel' },
+    { id: 'kdecor_copper', slot: 'kitchenDecor', room: 'kitchen', name: 'Thanh Treo Chảo Đồng', price: 55, desc: 'Thanh treo chảo đồng bóng loáng kèm muôi gỗ thủ công' },
+    { id: 'kdecor_herbwin', slot: 'kitchenDecor', room: 'kitchen', name: 'Cửa Sổ Húng Quế', price: 70, desc: 'Ô cửa sổ bếp đón nắng với chậu húng quế xanh rờn trên bệ' }
+  ],
+  diningTable: [
+    { id: 'table_round', slot: 'diningTable', room: 'kitchen', name: 'Bàn Tròn Bánh Ngọt', price: 0, desc: 'Bàn gỗ tròn nhỏ đặt đĩa bánh dâu tây thơm phức' },
+    { id: 'table_gingham', slot: 'diningTable', room: 'kitchen', name: 'Bàn Khăn Caro Đỏ', price: 60, desc: 'Bàn phủ khăn caro đỏ trắng chuẩn tiệm bánh ngọt Paris' },
+    { id: 'table_island', slot: 'diningTable', room: 'kitchen', name: 'Đảo Bếp Trà Sữa', price: 85, desc: 'Đảo bếp mini hiện đại đặt hai ly trà sữa trân châu đôi' }
+  ],
+  petBowl: [
+    { id: 'bowl_cat', slot: 'petBowl', room: 'kitchen', name: 'Bát Gốm Tai Mèo', price: 0, desc: 'Bát đôi gốm sứ hình tai mèo trên thảm lót chống tràn' },
+    { id: 'bowl_wood', slot: 'petBowl', room: 'kitchen', name: 'Bát Gỗ Nâng Cao', price: 45, desc: 'Khay gỗ sồi nâng chiều cao bảo vệ cổ cho bé ăn ngon miệng' },
+    { id: 'bowl_fish', slot: 'petBowl', room: 'kitchen', name: 'Bát Sứ Hình Cá Pastel', price: 55, desc: 'Bát sứ pastel xanh-hồng hình chú cá siêu đáng yêu' }
+  ],
+
+  // ===== PHÒNG TẮM (BATHROOM) =====
+  bathWall: [
+    { id: 'bwall_blue_tile', slot: 'bathWall', room: 'bathroom', name: 'Gạch Xanh Biển Pastel', price: 0, desc: 'Gạch ô vuông xanh biển nhạt mát lành như làn nước sáng' },
+    { id: 'bwall_pink_tile', slot: 'bathWall', room: 'bathroom', name: 'Gạch Hồng Phấn Bóng', price: 45, desc: 'Gạch men hồng phấn bóng nhẹ dịu dàng siêu ngọt ngào' },
+    { id: 'bwall_spa_wood', slot: 'bathWall', room: 'bathroom', name: 'Gạch Trắng Spa Nhật', price: 65, desc: 'Tường gạch trắng kết hợp ốp gỗ Hinoki chuẩn spa Onsen' }
+  ],
+  bathFloor: [
+    { id: 'bfloor_pebble', slot: 'bathFloor', room: 'bathroom', name: 'Đá Sỏi Sáng Tự Nhiên', price: 0, desc: 'Gạch lát họa tiết đá sỏi tròn sáng màu chống trơn' },
+    { id: 'bfloor_hex', slot: 'bathFloor', room: 'bathroom', name: 'Gạch Lục Giác Xanh Trắng', price: 50, desc: 'Gạch tổ ong lục giác phối trắng và xanh dương pastel' },
+    { id: 'bfloor_onsen', slot: 'bathFloor', room: 'bathroom', name: 'Sàn Gỗ Onsen Chống Nước', price: 65, desc: 'Sàn thanh gỗ tuyết tùng ấm chân chuẩn suối nước nóng Nhật' }
+  ],
+  vanityMirror: [
+    { id: 'vanity_arch', slot: 'vanityMirror', room: 'bathroom', name: 'Gương Vòm Gỗ & Chậu Sứ', price: 0, desc: 'Gương vòm viền gỗ ấm kèm bồn rửa mặt sứ trắng thanh lịch' },
+    { id: 'vanity_led', slot: 'vanityMirror', room: 'bathroom', name: 'Gương Tròn Đèn LED Ấm', price: 70, desc: 'Gương tròn hắt sáng LED vàng ấm lung linh chụp ảnh cực xinh' },
+    { id: 'vanity_mint', slot: 'vanityMirror', room: 'bathroom', name: 'Tủ Lavabo Xanh Mint', price: 75, desc: 'Tủ rửa mặt pastel xanh mint có ngăn kéo đựng khăn bông' }
+  ],
+  bathDecor: [
+    { id: 'bdecor_towel', slot: 'bathDecor', room: 'bathroom', name: 'Giá Khăn & Sữa Tắm', price: 0, desc: 'Giá treo khăn bông mềm mại kèm kệ chai sữa tắm hoa cúc' },
+    { id: 'bdecor_window', slot: 'bathDecor', room: 'bathroom', name: 'Cửa Sổ Tròn Kính Mờ', price: 60, desc: 'Ô cửa sổ tròn kính mờ rèm sáo đón ánh sáng dịu nhẹ' },
+    { id: 'bdecor_fern', slot: 'bathDecor', room: 'bathroom', name: 'Kệ Dương Xỉ & Nến Thơm', price: 65, desc: 'Kệ gỗ treo tường có cây dương xỉ rủ và hũ nến oải hương' }
+  ],
+  bathtub: [
+    { id: 'tub_vintage', slot: 'bathtub', room: 'bathroom', name: 'Bồn Tắm Chân Sư Tử', price: 0, desc: 'Bồn tắm vintage sứ trắng đầy bọt xà phòng bông xốp' },
+    { id: 'tub_hinoki', slot: 'bathtub', room: 'bathroom', name: 'Bồn Gỗ Hinoki Onsen', price: 90, desc: 'Bồn tắm gỗ Hinoki Nhật Bản thoang thoảng mùi gỗ thơm' },
+    { id: 'tub_pink_duck', slot: 'bathtub', room: 'bathroom', name: 'Bồn Hồng Pastel Vịt Vàng', price: 85, desc: 'Bồn sứ hồng phấn siêu cưng kèm chú vịt cao su vàng bơi lội' }
+  ],
+  bathProp: [
+    { id: 'bprop_basket', slot: 'bathProp', room: 'bathroom', name: 'Giỏ Mây Khăn Cuộn', price: 0, desc: 'Giỏ mây đan tay đựng đầy khăn tắm cuộn tròn thơm tho' },
+    { id: 'bprop_stool', slot: 'bathProp', room: 'bathroom', name: 'Ghế Đẩu Vịt & Tinh Dầu', price: 50, desc: 'Ghế đẩu gỗ nhỏ đặt chú vịt cao su và lọ tinh dầu thư giãn' },
+    { id: 'bprop_plant', slot: 'bathProp', room: 'bathroom', name: 'Chậu Lưỡi Hổ Mini', price: 55, desc: 'Chậu cây lưỡi hổ ưa ẩm giúp phòng tắm luôn xanh mát' }
+  ],
+  bathMat: [
+    { id: 'bmat_paw', slot: 'bathMat', room: 'bathroom', name: 'Thảm Bông Bàn Chân Mèo', price: 0, desc: 'Thảm thấm nước lông xù hình bàn chân mèo hồng kem siêu êm' },
+    { id: 'bmat_cloud', slot: 'bathMat', room: 'bathroom', name: 'Thảm Mây Xanh Biển', price: 45, desc: 'Thảm bông mềm hình đám mây xanh biển êm ái dưới chân' },
+    { id: 'bmat_duck', slot: 'bathMat', room: 'bathroom', name: 'Thảm Vịt Vàng Mini', price: 55, desc: 'Thảm tròn hình chú vịt con màu vàng bơ vui nhộn' }
   ]
 };
 
@@ -169,6 +304,26 @@ export const DEFAULT_EQUIPPED = {
   accessory: 'acc_sprout'
 };
 
+export const DEFAULT_KITCHEN_SLOTS = {
+  kitchenWall: 'kwall_tile_cream',
+  kitchenFloor: 'kfloor_checker',
+  fridge: 'fridge_cream',
+  stoveCounter: 'stove_oak',
+  kitchenDecor: 'kdecor_spice',
+  diningTable: 'table_round',
+  petBowl: 'bowl_cat'
+};
+
+export const DEFAULT_BATHROOM_SLOTS = {
+  bathWall: 'bwall_blue_tile',
+  bathFloor: 'bfloor_pebble',
+  vanityMirror: 'vanity_arch',
+  bathDecor: 'bdecor_towel',
+  bathtub: 'tub_vintage',
+  bathProp: 'bprop_basket',
+  bathMat: 'bmat_paw'
+};
+
 export const DEFAULT_INVENTORY = [
   'wall_cream',
   'floor_oak',
@@ -180,14 +335,44 @@ export const DEFAULT_INVENTORY = [
   'decor_bookshelf',
   'wdecor_fairy',
   'acc_none',
-  'acc_sprout'
+  'acc_sprout',
+  // Starter Nhà Bếp
+  'kwall_tile_cream',
+  'kfloor_checker',
+  'fridge_cream',
+  'stove_oak',
+  'kdecor_spice',
+  'table_round',
+  'bowl_cat',
+  // Starter Phòng Tắm
+  'bwall_blue_tile',
+  'bfloor_pebble',
+  'vanity_arch',
+  'bdecor_towel',
+  'tub_vintage',
+  'bprop_basket',
+  'bmat_paw'
 ];
 
-// Đảm bảo dữ liệu phòng cũ trên Firebase luôn có đủ các slot mới
+// Đảm bảo dữ liệu phòng cũ trên Firebase luôn có đủ các slot mới (tương thích ngược 100%)
 export function normalizeEquippedRoom(rawEquipped = {}) {
   return {
     ...DEFAULT_EQUIPPED,
     ...(rawEquipped || {})
+  };
+}
+
+export function normalizeKitchenSlots(rawKitchen = {}) {
+  return {
+    ...DEFAULT_KITCHEN_SLOTS,
+    ...(rawKitchen || {})
+  };
+}
+
+export function normalizeBathroomSlots(rawBathroom = {}) {
+  return {
+    ...DEFAULT_BATHROOM_SLOTS,
+    ...(rawBathroom || {})
   };
 }
 

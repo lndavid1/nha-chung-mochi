@@ -18,6 +18,8 @@ CATEGORIES = [
     "wallDecor",
     "accessories",
     "skewers",
+    "kitchen",
+    "bathroom",
 ]
 MAX_DIM = 512
 ACCESSORY_MAX_DIM = 256

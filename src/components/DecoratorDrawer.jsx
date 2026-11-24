@@ -2,9 +2,14 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Sparkles, Gift, Eye, Coins } from 'lucide-react';
 import {
-  ROOM_SLOTS,
+  ROOM_LIST,
+  ROOM_SLOTS_BY_ROOM,
   FURNITURE_CATALOG,
+  KITCHEN_SLOT_IDS,
+  BATHROOM_SLOT_IDS,
   normalizeEquippedRoom,
+  normalizeKitchenSlots,
+  normalizeBathroomSlots,
   normalizeInventoryList
 } from '../utils/gameLogic';
 import { WallFloorThumbnail } from './furniture/WallsAndFloors';
@@ -14,6 +19,8 @@ import { RugSvg } from './furniture/Rugs';
 import { PlantSvg } from './furniture/Plants';
 import { DecorFurnitureSvg } from './furniture/DecorFurniture';
 import { WallDecorSvg } from './furniture/WallDecor';
+import { KitchenItemThumbnail } from './furniture/KitchenFurniture';
+import { BathroomItemThumbnail } from './furniture/BathroomFurniture';
 import { AccessoryThumbnail } from './pet/PetAvatar';
 import SmartAsset from './common/SmartAsset';
 
@@ -105,6 +112,32 @@ export function RealItemSvgPreview({ item }) {
   if (item.slot === 'accessory') {
     return <AccessoryThumbnail accessoryId={item.id} />;
   }
+  if (KITCHEN_SLOT_IDS.includes(item.slot)) {
+    return (
+      <div className="w-16 h-14 flex items-center justify-center">
+        <SmartAsset
+          category="kitchen"
+          assetId={item.id}
+          showShadow={false}
+          className="w-full h-full object-contain"
+          fallbackSvg={<KitchenItemThumbnail item={item} />}
+        />
+      </div>
+    );
+  }
+  if (BATHROOM_SLOT_IDS.includes(item.slot)) {
+    return (
+      <div className="w-16 h-14 flex items-center justify-center">
+        <SmartAsset
+          category="bathroom"
+          assetId={item.id}
+          showShadow={false}
+          className="w-full h-full object-contain"
+          fallbackSvg={<BathroomItemThumbnail item={item} />}
+        />
+      </div>
+    );
+  }
   return null;
 }
 
@@ -112,6 +145,8 @@ export default function DecoratorDrawer({
   isOpen,
   onClose,
   roomData,
+  currentRoom = 'living',
+  onChangeRoom,
   activeSlot,
   onSelectSlot,
   previewEquipped,
@@ -128,10 +163,18 @@ export default function DecoratorDrawer({
 
   const coins = roomData?.coins ?? 0;
   const inventory = normalizeInventoryList(roomData?.room?.inventory);
-  const equipped = normalizeEquippedRoom(roomData?.room?.equipped);
+  const equipped = {
+    ...normalizeEquippedRoom(roomData?.room?.equipped),
+    ...normalizeKitchenSlots(roomData?.kitchenSlots),
+    ...normalizeBathroomSlots(roomData?.bathroomSlots)
+  };
   const hasPendingGift = Boolean(roomData?.mysteryGift);
+  const roomSlots = ROOM_SLOTS_BY_ROOM[currentRoom] || ROOM_SLOTS_BY_ROOM.living;
+  const resolvedSlot = roomSlots.some((s) => s.id === activeSlot)
+    ? activeSlot
+    : roomSlots[0].id;
 
-  const itemsForSlot = FURNITURE_CATALOG[activeSlot] || [];
+  const itemsForSlot = FURNITURE_CATALOG[resolvedSlot] || [];
   const displayedItems = filterOwnedOnly
     ? itemsForSlot.filter((it) => inventory.includes(it.id))
     : itemsForSlot;
@@ -195,10 +238,37 @@ export default function DecoratorDrawer({
             </div>
           </div>
 
-          {/* Thanh trượt ngang 9 Danh mục Slot */}
+          {/* Bộ chọn nhanh 3 phòng ngay trên thanh tiêu đề Studio */}
+          {onChangeRoom && (
+            <div className="px-3.5 pt-1.5 flex gap-1.5">
+              {ROOM_LIST.map((r) => {
+                const isCur = currentRoom === r.id;
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => {
+                      onChangeRoom(r.id);
+                      const firstSlot = ROOM_SLOTS_BY_ROOM[r.id]?.[0]?.id;
+                      if (firstSlot) onSelectSlot(firstSlot);
+                    }}
+                    className={`flex-1 py-1 rounded-xl text-[10.5px] font-black border-[1.6px] border-[#4A3525] transition-all ${
+                      isCur
+                        ? 'bg-[#FFE082] text-[#4A3525] shadow-sm'
+                        : 'bg-[#FFFDF9] text-[#7D6352]'
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Thanh trượt ngang Danh mục Slot của phòng đang mở */}
           <div className="px-3.5 py-2 flex gap-1.5 overflow-x-auto custom-scroll">
-            {ROOM_SLOTS.map((slot) => {
-              const selected = activeSlot === slot.id;
+            {roomSlots.map((slot) => {
+              const selected = resolvedSlot === slot.id;
               return (
                 <button
                   key={slot.id}

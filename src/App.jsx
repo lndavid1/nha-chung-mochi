@@ -21,7 +21,9 @@ import {
   Gamepad2,
   BellRing,
   Volume2,
-  VolumeX
+  VolumeX,
+  Home,
+  ChefHat
 } from 'lucide-react';
 import Onboarding from './components/Onboarding';
 import RoomStage from './components/RoomStage';
@@ -41,16 +43,22 @@ import { FoodSvgIcon } from './components/furniture/FoodSvgIcons';
 
 import {
   FOOD_CATALOG,
+  ROOM_LIST,
+  ROOM_SLOTS_BY_ROOM,
+  getSlotRoom,
   computeDecayedState,
   clampStat,
   evaluateCoopCareBonus,
   normalizeEquippedRoom,
+  normalizeKitchenSlots,
+  normalizeBathroomSlots,
   normalizeInventoryList
 } from './utils/gameLogic';
 import {
   subscribeToRoom,
   updateRoomFields,
   setupLivePresence,
+  updatePlayerCurrentRoom,
   decodeSharedApiKey
 } from './services/firebase';
 import {
@@ -113,6 +121,8 @@ export default function App() {
   const [activeModal, setActiveModal] = useState(null); // 'sticky' | 'photo' | 'gift' | 'chat' | 'log' | 'settings' | 'arcade'
   const [activeMiniGame, setActiveMiniGame] = useState(null); // 'subwayRun' | null
   const [isDecoratorMode, setIsDecoratorMode] = useState(false);
+  const [currentRoom, setCurrentRoom] = useState('living'); // 'living' | 'kitchen' | 'bathroom'
+  const [activeActionEvent, setActiveActionEvent] = useState(null);
   const [activeDecoratorSlot, setActiveDecoratorSlot] = useState('wall');
   const [previewEquipped, setPreviewEquipped] = useState(null);
   const [isCalibratorOpen, setIsCalibratorOpen] = useState(() => {
@@ -211,6 +221,21 @@ export default function App() {
   const partnerInfo = roomData?.players?.[partnerRole] || null;
   const isPartnerOnline = Boolean(partnerInfo?.online);
   const bothOnline = Boolean(session && isPartnerOnline);
+  const partnerRoomMeta = ROOM_LIST.find((r) => r.id === (partnerInfo?.currentRoom || 'living'));
+
+  const handleChangeRoom = useCallback(
+    (nextRoom) => {
+      if (!nextRoom || nextRoom === currentRoom) return;
+      setCurrentRoom(nextRoom);
+      setPreviewEquipped(null);
+      const firstSlot = ROOM_SLOTS_BY_ROOM[nextRoom]?.[0]?.id;
+      if (firstSlot) setActiveDecoratorSlot(firstSlot);
+      if (session?.roomId && session?.playerRole) {
+        updatePlayerCurrentRoom(session.roomId, session.playerRole, nextRoom);
+      }
+    },
+    [currentRoom, session?.roomId, session?.playerRole]
+  );
 
   // Đồng bộ bối cảnh nhạc nền: Ngày / Đêm (19h-6h hoặc thú đi ngủ) / Góc vui chơi & Mini-game
   useEffect(() => {
@@ -292,7 +317,8 @@ export default function App() {
           actionDetail,
           userMessage,
           bothOnline,
-          sharedApiKey: sharedKey
+          sharedApiKey: sharedKey,
+          currentRoom
         });
 
         const now = Date.now();
@@ -406,6 +432,8 @@ export default function App() {
 
     await updateRoomFields(session.roomId, updates);
     setActiveTray(null);
+    handleChangeRoom('kitchen');
+    setActiveActionEvent({ type: 'feed', id: now });
 
     if (bonus.isCoopCombo) {
       showToast(`CO-OP COMBO x2 XU! (+${bonus.earnedCoins} Xu) • Streak ${bonus.nextStreak} ngày!`);
@@ -463,6 +491,8 @@ export default function App() {
       updates['pet/hygiene'] = 100;
       updates['pet/mood'] = clampStat((roomData.pet?.mood ?? 80) + 10);
       actionDesc = `đã tắm bọt thơm phức cho ${roomData.pet?.name || 'Mochi'}`;
+      handleChangeRoom('bathroom');
+      setActiveActionEvent({ type: 'bath', id: now });
     } else if (type === 'clean_all') {
       const trashCount = (roomData.pet?.trashList || []).length;
       const extraTrashCoins = trashCount * 5;
@@ -476,6 +506,7 @@ export default function App() {
       updates['pet/energy'] = clampStat(
         (roomData.pet?.energy ?? 80) + (nextSleep ? 12 : 0)
       );
+      if (nextSleep) handleChangeRoom('living');
       actionDesc = nextSleep
         ? `đã tắt đèn đắp chăn cho ${roomData.pet?.name || 'Mochi'} đi ngủ`
         : `đã bật đèn đánh thức ${roomData.pet?.name || 'Mochi'} dậy chơi`;
@@ -586,11 +617,7 @@ export default function App() {
       ...(roomData.room?.inventory || []),
       item.id
     ]);
-    const equipped = {
-      ...normalizeEquippedRoom(roomData.room?.equipped),
-      [item.slot]: item.id
-    };
-
+    const slotRoom = getSlotRoom(item.slot);
     const logEntry = {
       id: `log_shop_${now}`,
       actor: session.playerName,
@@ -598,13 +625,29 @@ export default function App() {
       petComment: `Oa, ${item.name} hợp với tổ ấm của mình ghê!`,
       timestamp: now
     };
-
-    await updateRoomFields(session.roomId, {
+    const updates = {
       coins: nextCoins,
       'room/inventory': inventory,
-      'room/equipped': equipped,
       logs: [logEntry, ...(roomData.logs || [])].slice(0, 20)
-    });
+    };
+    if (slotRoom === 'kitchen') {
+      updates.kitchenSlots = {
+        ...normalizeKitchenSlots(roomData.kitchenSlots),
+        [item.slot]: item.id
+      };
+    } else if (slotRoom === 'bathroom') {
+      updates.bathroomSlots = {
+        ...normalizeBathroomSlots(roomData.bathroomSlots),
+        [item.slot]: item.id
+      };
+    } else {
+      updates['room/equipped'] = {
+        ...normalizeEquippedRoom(roomData.room?.equipped),
+        [item.slot]: item.id
+      };
+    }
+
+    await updateRoomFields(session.roomId, updates);
 
     setPreviewEquipped(null);
     soundEngine.play('buy');
@@ -613,8 +656,15 @@ export default function App() {
 
   const handleEquipExisting = async (item) => {
     if (!roomData || !session) return;
+    const slotRoom = getSlotRoom(item.slot);
+    const fieldKey =
+      slotRoom === 'kitchen'
+        ? `kitchenSlots/${item.slot}`
+        : slotRoom === 'bathroom'
+        ? `bathroomSlots/${item.slot}`
+        : `room/equipped/${item.slot}`;
     await updateRoomFields(session.roomId, {
-      [`room/equipped/${item.slot}`]: item.id
+      [fieldKey]: item.id
     });
     setPreviewEquipped(null);
     showToast(`Đã lắp "${item.name}"`);
@@ -669,24 +719,37 @@ export default function App() {
       ...(roomData.room?.inventory || []),
       gift.itemId
     ]);
-    const equipped = {
-      ...normalizeEquippedRoom(roomData.room?.equipped),
-      [gift.slot]: gift.itemId
-    };
-
+    const giftRoom = getSlotRoom(gift.slot);
     const logEntry = {
       id: `log_unwrap_${now}`,
       actor: session.playerName,
       action: `đã bóc hộp quà "${gift.itemName}" từ ${gift.senderName}!`,
       timestamp: now
     };
-
-    await updateRoomFields(session.roomId, {
+    const unwrapUpdates = {
       'room/inventory': inventory,
-      'room/equipped': equipped,
       mysteryGift: null
-    });
+    };
+    if (giftRoom === 'kitchen') {
+      unwrapUpdates.kitchenSlots = {
+        ...normalizeKitchenSlots(roomData.kitchenSlots),
+        [gift.slot]: gift.itemId
+      };
+    } else if (giftRoom === 'bathroom') {
+      unwrapUpdates.bathroomSlots = {
+        ...normalizeBathroomSlots(roomData.bathroomSlots),
+        [gift.slot]: gift.itemId
+      };
+    } else {
+      unwrapUpdates['room/equipped'] = {
+        ...normalizeEquippedRoom(roomData.room?.equipped),
+        [gift.slot]: gift.itemId
+      };
+    }
+
+    await updateRoomFields(session.roomId, unwrapUpdates);
     soundEngine.play('giftOpen');
+    handleChangeRoom(giftRoom);
 
     triggerPetAiReaction({
       snapshotRoom: {
@@ -1049,6 +1112,9 @@ export default function App() {
       >
         <RoomStage
           roomData={roomData}
+          currentRoom={currentRoom}
+          onChangeRoom={handleChangeRoom}
+          activeActionEvent={activeActionEvent}
           previewEquipped={
             isCalibratorOpen
               ? { ...(previewEquipped || {}), accessory: calibratorAccessory }
@@ -1188,9 +1254,9 @@ export default function App() {
                       isPartnerOnline ? 'bg-[#88C9A1] animate-pulse' : 'bg-[#D6C7B8]'
                     }`}
                   />
-                  <span className="text-xs font-black text-[#4A3525] truncate max-w-[110px] whitespace-nowrap">
+                  <span className="text-xs font-black text-[#4A3525] truncate max-w-[140px] whitespace-nowrap">
                     {bothOnline
-                      ? 'Đang ở nhà'
+                      ? `${partnerInfo?.name || 'Đang ở nhà'} (${partnerRoomMeta?.shortLabel || 'Phòng khách'})`
                       : partnerInfo?.name
                       ? partnerInfo.name
                       : session.roomId}
@@ -1352,6 +1418,38 @@ export default function App() {
             )}
           </AnimatePresence>
 
+          {/* THANH CHUYỂN 3 PHÒNG NỔI SIÊU GỌN (Room Switcher Pill) */}
+          <div className="pointer-events-auto mx-auto cozy-glass h-8 px-1.5 rounded-full border-[1.8px] border-[#4A3525] flex items-center gap-1 shadow-sm">
+            {[
+              { id: 'living', label: 'Phòng khách', icon: Home },
+              { id: 'kitchen', label: 'Nhà bếp', icon: ChefHat },
+              { id: 'bathroom', label: 'Phòng tắm', icon: Bath }
+            ].map((rm) => {
+              const IconComp = rm.icon;
+              const active = currentRoom === rm.id;
+              return (
+                <button
+                  key={rm.id}
+                  type="button"
+                  onClick={() => {
+                    if (currentRoom !== rm.id) {
+                      soundEngine.play('sheetOpen');
+                      handleChangeRoom(rm.id);
+                    }
+                  }}
+                  className={`h-6 px-2.5 rounded-full text-[10.5px] font-black flex items-center gap-1 transition-all whitespace-nowrap ${
+                    active
+                      ? 'bg-[#FFE082] text-[#4A3525] border border-[#4A3525] shadow-sm'
+                      : 'text-[#7D6352] hover:text-[#4A3525]'
+                  }`}
+                >
+                  <IconComp className="w-3 h-3 shrink-0" />
+                  <span>{rm.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* THANH 4 CHỈ SỐ TINH GỌN */}
           <div className="pointer-events-auto grid grid-cols-4 gap-1.5 w-full">
             {statItems.map((st) => {
@@ -1467,6 +1565,8 @@ export default function App() {
           setPreviewEquipped(null);
         }}
         roomData={roomData}
+        currentRoom={currentRoom}
+        onChangeRoom={handleChangeRoom}
         activeSlot={activeDecoratorSlot}
         onSelectSlot={(slotId) => setActiveDecoratorSlot(slotId)}
         previewEquipped={previewEquipped}
