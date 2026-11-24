@@ -5,3 +5,5 @@ dist
 .DS_Store
 *.log
 raw_assets/
+push-worker/node_modules/
+push-worker/.wrangler/

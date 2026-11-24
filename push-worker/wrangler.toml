@@ -1,0 +1,7 @@
+name = "mochi-push-worker"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+# (Tùy chọn) Bỏ dấu # 2 dòng dưới để bật Cron tự động kiểm tra và báo khi thú đói mỗi 3 tiếng
+# [triggers]
+# crons = ["0 */3 * * *"]

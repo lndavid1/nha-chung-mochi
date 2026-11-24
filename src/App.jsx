@@ -18,7 +18,8 @@ import {
   X,
   Eye,
   EyeOff,
-  Gamepad2
+  Gamepad2,
+  BellRing
 } from 'lucide-react';
 import Onboarding from './components/Onboarding';
 import RoomStage from './components/RoomStage';
@@ -54,6 +55,12 @@ import {
   askPetBrain,
   maybeBuildUpdatedMemorySummary
 } from './services/petBrain';
+import {
+  notifyPartner,
+  clearAppBadgeSafe,
+  getNudgeCooldownRemainingMin,
+  markNudgeSentNow
+} from './services/pushService';
 
 const SESSION_STORAGE_KEY = 'mochi_active_session_v1';
 const IOS_BANNER_DISMISSED_KEY = 'mochi_ios_pwa_banner_dismissed_v1';
@@ -144,6 +151,18 @@ export default function App() {
     }
   }, []);
 
+  // Tự động xóa chấm đỏ Badge ngoài màn hình chính khi mở lại PWA
+  useEffect(() => {
+    clearAppBadgeSafe();
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        clearAppBadgeSafe();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
   const dismissIosBanner = () => {
     setShowIosBanner(false);
     localStorage.setItem(IOS_BANNER_DISMISSED_KEY, '1');
@@ -198,6 +217,38 @@ export default function App() {
   const showToast = (text) => {
     setComboToast(text);
     setTimeout(() => setComboToast(null), 3200);
+  };
+
+  // Gọi người kia về nhà (Nudge Partner qua Web Push, Cooldown 15 phút)
+  const handleNudgePartner = async () => {
+    if (!roomData || !session) return;
+    const remainingMin = getNudgeCooldownRemainingMin();
+    if (remainingMin > 0) {
+      showToast(`Vừa gọi rồi, đợi thêm ${remainingMin} phút nữa nha!`);
+      return;
+    }
+
+    const res = await notifyPartner(roomData, session.roomId, session.playerRole, {
+      title: `📣 ${session.playerName} gọi về nhà!`,
+      body: `${roomData.pet?.name || 'Mochi'} đang ngóng bạn về vuốt đầu nè!`,
+      tag: 'mochi-nudge',
+      force: true
+    });
+
+    if (res?.reason === 'no-subscription') {
+      showToast('Người kia chưa bật Thông báo màn hình khóa trong Cài đặt!');
+      return;
+    }
+    if (res?.reason === 'no-worker-url') {
+      showToast('Hãy cài đặt Cloudflare Worker trong mục Cài đặt trước nhé!');
+      return;
+    }
+    if (res?.ok) {
+      markNudgeSentNow();
+      showToast(`Đã rung chuông gọi ${partnerInfo?.name || 'người kia'} về nhà!`);
+    } else {
+      showToast('Không gửi được thông báo lúc này, kiểm tra lại Worker trong Cài đặt nhé!');
+    }
   };
 
   // Gọi AI Pet Brain và đồng bộ bong bóng thoại lên Firebase
@@ -573,6 +624,12 @@ export default function App() {
       logs: [logEntry, ...(roomData.logs || [])].slice(0, 20)
     });
     showToast('Đã đặt Hộp Quà Bất Ngờ giữa phòng cho người kia bóc!');
+
+    notifyPartner(roomData, session.roomId, session.playerRole, {
+      title: '🎁 Có hộp quà bất ngờ giữa phòng!',
+      body: `${session.playerName} vừa gói tặng bạn một món quà bí mật, vào bóc ngay!`,
+      tag: 'mochi-gift'
+    });
   };
 
   // 8. Bóc hộp quà bất ngờ
@@ -633,6 +690,15 @@ export default function App() {
     setLastReadStickyTs(now);
     localStorage.setItem(LAST_READ_STICKY_KEY, String(now));
     showToast('Đã ghim giấy nhớ mới lên bảng bần!');
+
+    notifyPartner(roomData, session.roomId, session.playerRole, {
+      title: `📝 ${session.playerName} vừa dán giấy nhớ mới!`,
+      body:
+        notePayload.mode === 'drawing'
+          ? '[Tranh vẽ tay mới trên bảng bần]'
+          : (notePayload.text || 'Vào xem giấy nhớ mới nè!').slice(0, 50),
+      tag: 'mochi-sticky'
+    });
 
     const logEntry = {
       id: `log_note_${now}`,
@@ -797,6 +863,11 @@ export default function App() {
     await updateRoomFields(session.roomId, updates);
 
     if (passedPartner) {
+      notifyPartner(roomData, session.roomId, session.playerRole, {
+        title: '🏆 Kỷ lục của bạn vừa bị phá!',
+        body: `${session.playerName} vừa vượt điểm bạn ở Mochi Chạy Phố (${score} điểm)!`,
+        tag: 'mochi-record'
+      });
       triggerPetAiReaction({
         snapshotRoom: {
           ...roomData,
@@ -873,6 +944,11 @@ export default function App() {
     await updateRoomFields(session.roomId, updates);
 
     if (passedPartnerLevel) {
+      notifyPartner(roomData, session.roomId, session.playerRole, {
+        title: '🏆 Kỷ lục của bạn vừa bị phá!',
+        body: `${session.playerName} vừa vượt màn bạn ở Bếp Nướng Mochi (Màn ${level})!`,
+        tag: 'mochi-record'
+      });
       triggerPetAiReaction({
         snapshotRoom: {
           ...roomData,
@@ -1037,6 +1113,17 @@ export default function App() {
                     : session.roomId}
                 </span>
               </div>
+            )}
+
+            {!isPhotoMode && !isPartnerOnline && (
+              <button
+                type="button"
+                onClick={handleNudgePartner}
+                className="cozy-glass w-9 h-9 rounded-full border-[2px] border-[#4A3525] bg-[#FFB7C5]/90 flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
+                title={`Gọi ${partnerInfo?.name || 'người kia'} về nhà`}
+              >
+                <BellRing className="w-4 h-4" />
+              </button>
             )}
 
             <button

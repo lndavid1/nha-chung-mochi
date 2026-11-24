@@ -1,19 +1,31 @@
 {
   "name": "Nhà Chung Mochi - Nuôi Thú & Xây Phòng Đôi",
-  "short_name": "Nhà Chung Mochi",
-  "description": "Web App game nuôi thú cưng và xây phòng chung dành cho 2 người",
+  "short_name": "Nhà Mochi",
+  "description": "Web App game nuôi thú cưng và xây phòng chung thời gian thực cho 2 người",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#FFF9F2",
+  "background_color": "#FFF8F0",
   "theme_color": "#FFF7ED",
   "icons": [
     {
-      "src": "./icon.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ]
 }

@@ -11,7 +11,14 @@ import {
   Users,
   Sun,
   Sunset,
-  Moon
+  Moon,
+  Bell,
+  BellOff,
+  Share,
+  ChevronDown,
+  ChevronUp,
+  Send,
+  Server
 } from 'lucide-react';
 import {
   getSavedGeminiKey,
@@ -25,6 +32,17 @@ import {
   decodeSharedApiKey,
   getConnectionMode
 } from '../../services/firebase';
+import {
+  getPushEnvironment,
+  getPushConfig,
+  savePushConfigToLocal,
+  syncPublicPushConfigToRoom,
+  checkPushWorkerHealth,
+  subscribeToPush,
+  unsubscribeFromPush,
+  getCurrentDeviceSubscription,
+  sendTestPushToSelf
+} from '../../services/pushService';
 import BottomSheet from '../BottomSheet';
 
 export default function SettingsModal({
@@ -48,6 +66,17 @@ export default function SettingsModal({
   const [testResult, setTestResult] = useState(null);
   const [copiedInvite, setCopiedInvite] = useState(false);
 
+  // Web Push state
+  const [pushEnv, setPushEnv] = useState(() => getPushEnvironment());
+  const [hasDeviceSub, setHasDeviceSub] = useState(false);
+  const [pushBusy, setPushBusy] = useState(null); // 'subscribe' | 'unsubscribe' | 'test' | 'health' | 'save' | null
+  const [pushNotice, setPushNotice] = useState(null);
+  const [showWorkerConfig, setShowWorkerConfig] = useState(false);
+  const [workerUrlInput, setWorkerUrlInput] = useState('');
+  const [vapidPublicKeyInput, setVapidPublicKeyInput] = useState('');
+  const [pushSecretInput, setPushSecretInput] = useState('');
+  const [syncPublicPushToRoom, setSyncPublicPushToRoom] = useState(true);
+
   useEffect(() => {
     if (isOpen) {
       setPetNameInput(roomData?.pet?.name || 'Mochi');
@@ -59,8 +88,134 @@ export default function SettingsModal({
       setSyncKeyToRoom(Boolean(roomData?.encryptedGeminiKey));
       setReport(getModelsStatusReport());
       setTestResult(null);
+
+      // Load Web Push environment & config
+      setPushEnv(getPushEnvironment());
+      const pushCfg = getPushConfig(roomData?.pushConfig);
+      setWorkerUrlInput(pushCfg.workerUrl);
+      setVapidPublicKeyInput(pushCfg.vapidPublicKey);
+      setPushSecretInput(pushCfg.pushSecret);
+      setSyncPublicPushToRoom(true);
+      setPushNotice(null);
+
+      getCurrentDeviceSubscription().then((sub) => {
+        setHasDeviceSub(Boolean(sub));
+      });
     }
   }, [isOpen, roomData, session]);
+
+  const myRole = session?.playerRole || 'player1';
+  const partnerRole = myRole === 'player1' ? 'player2' : 'player1';
+  const myRoomSub = roomData?.pushSubscriptions?.[myRole] || null;
+  const partnerRoomSub = roomData?.pushSubscriptions?.[partnerRole] || null;
+  const isPushActiveOnThisDevice = Boolean(hasDeviceSub && myRoomSub?.endpoint);
+
+  const handleSavePushConfig = async (e) => {
+    e.preventDefault();
+    setPushBusy('save');
+    setPushNotice(null);
+    try {
+      const saved = savePushConfigToLocal({
+        workerUrl: workerUrlInput,
+        vapidPublicKey: vapidPublicKeyInput,
+        pushSecret: pushSecretInput
+      });
+      if (syncPublicPushToRoom && session?.roomId && (saved.workerUrl || saved.vapidPublicKey)) {
+        await syncPublicPushConfigToRoom(session.roomId, {
+          workerUrl: saved.workerUrl,
+          vapidPublicKey: saved.vapidPublicKey
+        });
+      }
+      setPushNotice({
+        ok: true,
+        text: syncPublicPushToRoom
+          ? 'Đã lưu cấu hình Worker (chỉ đồng bộ URL & Public Key công khai lên phòng).'
+          : 'Đã lưu cấu hình Worker cục bộ trên thiết bị này!'
+      });
+    } catch (err) {
+      setPushNotice({ ok: false, text: err.message || 'Không lưu được cấu hình Push.' });
+    } finally {
+      setPushBusy(null);
+    }
+  };
+
+  const handleCheckWorkerHealth = async () => {
+    setPushBusy('health');
+    setPushNotice(null);
+    try {
+      const data = await checkPushWorkerHealth(workerUrlInput);
+      setPushNotice({
+        ok: true,
+        text: `Worker hoạt động tốt! (${data.service || 'mochi-push-worker'})`
+      });
+    } catch (err) {
+      setPushNotice({
+        ok: false,
+        text: `Không kết nối được Worker: ${err.message || 'Lỗi mạng'}`
+      });
+    } finally {
+      setPushBusy(null);
+    }
+  };
+
+  const handleEnablePush = async () => {
+    setPushBusy('subscribe');
+    setPushNotice(null);
+    try {
+      // Lưu trước mọi thay đổi đang gõ dở trong accordion
+      if (workerUrlInput || vapidPublicKeyInput || pushSecretInput) {
+        savePushConfigToLocal({
+          workerUrl: workerUrlInput,
+          vapidPublicKey: vapidPublicKeyInput,
+          pushSecret: pushSecretInput
+        });
+      }
+      const sub = await subscribeToPush(session?.roomId, myRole, roomData?.pushConfig);
+      setHasDeviceSub(true);
+      setPushEnv(getPushEnvironment());
+      setPushNotice({
+        ok: true,
+        text: `Đã bật thông báo màn hình khóa trên ${sub.device}!`
+      });
+    } catch (err) {
+      if (String(err.message || '').includes('VAPID Public Key')) {
+        setShowWorkerConfig(true);
+      }
+      setPushNotice({ ok: false, text: err.message || 'Không thể bật thông báo.' });
+    } finally {
+      setPushBusy(null);
+    }
+  };
+
+  const handleDisablePush = async () => {
+    setPushBusy('unsubscribe');
+    setPushNotice(null);
+    try {
+      await unsubscribeFromPush(session?.roomId, myRole);
+      setHasDeviceSub(false);
+      setPushNotice({ ok: true, text: 'Đã tắt thông báo màn hình khóa trên máy này.' });
+    } catch (err) {
+      setPushNotice({ ok: false, text: err.message || 'Lỗi khi tắt thông báo.' });
+    } finally {
+      setPushBusy(null);
+    }
+  };
+
+  const handleSendTestPush = async () => {
+    setPushBusy('test');
+    setPushNotice(null);
+    try {
+      await sendTestPushToSelf(session?.roomId, myRole, roomData);
+      setPushNotice({
+        ok: true,
+        text: 'Đã gửi thông báo thử! Hãy khóa màn hình hoặc xem thanh thông báo.'
+      });
+    } catch (err) {
+      setPushNotice({ ok: false, text: err.message || 'Gửi thông báo thử thất bại.' });
+    } finally {
+      setPushBusy(null);
+    }
+  };
 
   const refreshReport = () => {
     setReport(getModelsStatusReport());
@@ -222,6 +377,211 @@ export default function SettingsModal({
               <Users className="w-3 h-3" />
               <span>Bật/Tắt Co-op Online</span>
             </button>
+          </div>
+        </div>
+
+        {/* 2.5 Thông Báo Màn Hình Khóa (iOS PWA / Android / PC) */}
+        <div className="p-3.5 rounded-2xl bg-[#FFFDF9] border-2 border-[#4A3525] space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-xs font-black text-[#4A3525]">
+              <Bell className="w-4 h-4 text-[#E87A4D]" />
+              <span>Thông Báo Màn Hình Khóa</span>
+            </div>
+            {isPushActiveOnThisDevice ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#88C9A1]/45 border border-[#4A3525] text-[#4A3525] text-[10px] font-black">
+                <CheckCircle2 className="w-3 h-3" />
+                Đã bật ({myRoomSub?.device || 'Máy này'})
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FFF0DE] border border-[#4A3525] text-[#7D6352] text-[10px] font-black">
+                Chưa bật
+              </span>
+            )}
+          </div>
+
+          <div className="text-[10.5px] font-bold text-[#7D6352] flex items-center justify-between">
+            <span>Nhận báo khi có giấy nhớ, hộp quà, phá kỷ lục & gọi về nhà.</span>
+          </div>
+
+          {partnerRoomSub?.endpoint && (
+            <div className="text-[10.5px] font-extrabold text-[#5EA87A]">
+              • Người kia đã bật thông báo ({partnerRoomSub.device || 'Thiết bị'})
+            </div>
+          )}
+
+          {pushEnv.isIOS && !pushEnv.isStandalone ? (
+            <div className="p-3 rounded-xl bg-[#FFF3D6] border-[1.6px] border-[#4A3525] space-y-1.5 text-[11px] font-bold text-[#4A3525]">
+              <div className="font-black flex items-center gap-1.5 text-[#E87A4D]">
+                <Share className="w-3.5 h-3.5" />
+                <span>Hướng dẫn bật thông báo trên iPhone (iOS 16.4+)</span>
+              </div>
+              <p>
+                <strong>Bước 1:</strong> Bấm nút <strong>Chia sẻ (Share)</strong> ở thanh đáy Safari.
+              </p>
+              <p>
+                <strong>Bước 2:</strong> Chọn <strong>Thêm vào MH chính (Add to Home Screen)</strong>,
+                sau đó mở lại game từ biểu tượng ngoài màn hình chính để bật thông báo!
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {!isPushActiveOnThisDevice ? (
+                <button
+                  type="button"
+                  disabled={Boolean(pushBusy)}
+                  onClick={handleEnablePush}
+                  className="tactile-btn w-full py-2.5 rounded-xl bg-[#FF9B71] border-[1.8px] border-[#4A3525] text-[#4A3525] text-xs font-black flex items-center justify-center gap-1.5"
+                >
+                  <Bell className="w-4 h-4" />
+                  <span>
+                    {pushBusy === 'subscribe'
+                      ? 'Đang đăng ký...'
+                      : 'Bật thông báo màn hình khóa'}
+                  </span>
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    disabled={Boolean(pushBusy)}
+                    onClick={handleSendTestPush}
+                    className="tactile-btn w-full py-2 rounded-xl bg-[#FFE082] border-[1.8px] border-[#4A3525] text-[#4A3525] text-xs font-black flex items-center justify-center gap-1.5"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>
+                      {pushBusy === 'test'
+                        ? 'Đang gửi thử...'
+                        : 'Gửi thử thông báo cho chính mình'}
+                    </span>
+                  </button>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={Boolean(pushBusy)}
+                      onClick={handleEnablePush}
+                      className="tactile-btn flex-1 py-1.5 rounded-xl bg-[#FFF0DE] border-[1.6px] border-[#4A3525] text-[#4A3525] text-[11px] font-black flex items-center justify-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Đăng ký lại</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={Boolean(pushBusy)}
+                      onClick={handleDisablePush}
+                      className="tactile-btn flex-1 py-1.5 rounded-xl bg-[#FFB7C5] border-[1.6px] border-[#4A3525] text-[#4A3525] text-[11px] font-black flex items-center justify-center gap-1"
+                    >
+                      <BellOff className="w-3 h-3" />
+                      <span>
+                        {pushBusy === 'unsubscribe' ? 'Đang tắt...' : 'Tắt thông báo'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {pushNotice && (
+            <div
+              className={`p-2.5 rounded-xl text-[11px] font-extrabold border-[1.6px] border-[#4A3525] ${
+                pushNotice.ok ? 'bg-[#88C9A1]/40 text-[#4A3525]' : 'bg-[#FFB7C5] text-[#4A3525]'
+              }`}
+            >
+              {pushNotice.text}
+            </div>
+          )}
+
+          {/* Accordion Cài đặt Cloudflare Worker */}
+          <div className="pt-1.5 border-t border-[#4A3525]/10">
+            <button
+              type="button"
+              onClick={() => setShowWorkerConfig((prev) => !prev)}
+              className="w-full flex items-center justify-between text-[11px] font-black text-[#4A3525] py-1"
+            >
+              <span className="flex items-center gap-1.5">
+                <Server className="w-3.5 h-3.5 text-[#7D6352]" />
+                <span>Cài đặt Cloudflare Worker (0 đồng)</span>
+              </span>
+              {showWorkerConfig ? (
+                <ChevronUp className="w-4 h-4 text-[#7D6352]" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-[#7D6352]" />
+              )}
+            </button>
+
+            {showWorkerConfig && (
+              <form onSubmit={handleSavePushConfig} className="mt-2 space-y-2">
+                <div>
+                  <label className="block text-[10px] font-black text-[#7D6352] mb-0.5">
+                    Cloudflare Worker URL
+                  </label>
+                  <input
+                    type="url"
+                    value={workerUrlInput}
+                    onChange={(e) => setWorkerUrlInput(e.target.value)}
+                    placeholder="https://mochi-push-worker.tenban.workers.dev"
+                    className="w-full px-2.5 py-1.5 rounded-xl border-[1.6px] border-[#4A3525] bg-[#FFF8F0] text-[11px] font-mono text-[#4A3525]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-[#7D6352] mb-0.5">
+                    VAPID Public Key (Khóa công khai)
+                  </label>
+                  <input
+                    type="text"
+                    value={vapidPublicKeyInput}
+                    onChange={(e) => setVapidPublicKeyInput(e.target.value)}
+                    placeholder="Dán VAPID Public Key (B...)"
+                    className="w-full px-2.5 py-1.5 rounded-xl border-[1.6px] border-[#4A3525] bg-[#FFF8F0] text-[11px] font-mono text-[#4A3525]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-[#7D6352] mb-0.5">
+                    Push Secret (Tùy chọn • Chỉ lưu cục bộ trên máy này)
+                  </label>
+                  <input
+                    type="password"
+                    value={pushSecretInput}
+                    onChange={(e) => setPushSecretInput(e.target.value)}
+                    placeholder="Khớp với PUSH_SHARED_SECRET trên Worker"
+                    className="w-full px-2.5 py-1.5 rounded-xl border-[1.6px] border-[#4A3525] bg-[#FFF8F0] text-[11px] font-mono text-[#4A3525]"
+                  />
+                </div>
+
+                <label className="flex items-start gap-2 text-[10.5px] font-bold text-[#7D6352] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={syncPublicPushToRoom}
+                    onChange={(e) => setSyncPublicPushToRoom(e.target.checked)}
+                    className="mt-0.5 rounded text-[#FF9B71]"
+                  />
+                  <span>
+                    Đồng bộ Worker URL &amp; VAPID Public Key lên phòng (không bao giờ đồng bộ khóa bí mật)
+                  </span>
+                </label>
+
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={Boolean(pushBusy)}
+                    className="tactile-btn flex-1 py-1.5 rounded-xl bg-[#88C9A1] border-[1.6px] border-[#4A3525] text-[#4A3525] text-[11px] font-black"
+                  >
+                    {pushBusy === 'save' ? 'Đang lưu...' : 'Lưu cấu hình Push'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={Boolean(pushBusy)}
+                    onClick={handleCheckWorkerHealth}
+                    className="tactile-btn flex-1 py-1.5 rounded-xl bg-[#FFF0DE] border-[1.6px] border-[#4A3525] text-[#4A3525] text-[11px] font-black"
+                  >
+                    {pushBusy === 'health' ? 'Đang kiểm tra...' : 'Kiểm tra Worker'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
 
