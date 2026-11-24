@@ -104,6 +104,7 @@ export default function RoomStage({
   const stageRef = useRef(null);
   const petComboRef = useRef({ count: 0, last: 0 });
   const swipeStartRef = useRef(null);
+  const didSwipeAtRef = useRef(0);
   const lastRoomIdxRef = useRef(0);
 
   useEffect(() => {
@@ -423,32 +424,55 @@ export default function RoomStage({
     spawnBurst(16, 52, 'Khăn bông êm~', '🦆');
   };
 
-  // Vuốt ngang Trái/Phải trên nền phòng để chuyển phòng mượt
-  const handleStageTouchStart = (e) => {
+  // Vuốt ngang Trái/Phải trên màn hình (cả cảm ứng iPhone lẫn kéo chuột PC) để chuyển qua lại 3 phòng mượt
+  const beginSwipe = (clientX, clientY) => {
     if (isDecoratorMode || isTrayOpen || !onChangeRoom) return;
-    if (e.touches.length !== 1) return;
-    swipeStartRef.current = {
-      x: e.touches[0].clientX,
-      y: e.touches[0].clientY,
-      t: Date.now()
-    };
+    swipeStartRef.current = { x: clientX, y: clientY, t: Date.now() };
   };
 
-  const handleStageTouchEnd = (e) => {
+  const endSwipe = (clientX, clientY) => {
     const start = swipeStartRef.current;
     swipeStartRef.current = null;
     if (!start || isDecoratorMode || isTrayOpen || !onChangeRoom) return;
+    const dx = clientX - start.x;
+    const dy = clientY - start.y;
+    const dt = Date.now() - start.t;
+    if (dt < 750 && Math.abs(dx) > 38 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+      didSwipeAtRef.current = Date.now();
+      // Vuốt sang trái (dx < 0) -> phòng kế tiếp; Vuốt sang phải (dx > 0) -> phòng trước (có vòng lặp 3 phòng mượt)
+      const len = ROOM_LIST.length;
+      const nextIdx = dx < 0 ? (currentRoomIndex + 1) % len : (currentRoomIndex - 1 + len) % len;
+      soundEngine.play('sheetOpen');
+      onChangeRoom(ROOM_LIST[nextIdx].id);
+    }
+  };
+
+  const handleStageTouchStart = (e) => {
+    if (e.touches.length !== 1) return;
+    beginSwipe(e.touches[0].clientX, e.touches[0].clientY);
+  };
+
+  const handleStageTouchEnd = (e) => {
     const touch = e.changedTouches?.[0];
     if (!touch) return;
-    const dx = touch.clientX - start.x;
-    const dy = touch.clientY - start.y;
-    const dt = Date.now() - start.t;
-    if (dt < 550 && Math.abs(dx) > 54 && Math.abs(dx) > Math.abs(dy) * 1.4) {
-      const nextIdx = dx < 0 ? currentRoomIndex + 1 : currentRoomIndex - 1;
-      if (nextIdx >= 0 && nextIdx < ROOM_LIST.length) {
-        soundEngine.play('sheetOpen');
-        onChangeRoom(ROOM_LIST[nextIdx].id);
-      }
+    endSwipe(touch.clientX, touch.clientY);
+  };
+
+  const handleStagePointerDown = (e) => {
+    if (e.pointerType === 'touch') return; // đã xử lý bằng touch events
+    beginSwipe(e.clientX, e.clientY);
+  };
+
+  const handleStagePointerUp = (e) => {
+    if (e.pointerType === 'touch') return;
+    endSwipe(e.clientX, e.clientY);
+  };
+
+  const handleStageClickCapture = (e) => {
+    // Chặn click nhầm vào đồ nội thất ngay sau khi vừa vuốt chuyển phòng
+    if (Date.now() - didSwipeAtRef.current < 220) {
+      e.stopPropagation();
+      e.preventDefault();
     }
   };
 
@@ -469,7 +493,10 @@ export default function RoomStage({
       ref={stageRef}
       onTouchStart={handleStageTouchStart}
       onTouchEnd={handleStageTouchEnd}
-      className="relative w-full h-full overflow-hidden select-none bg-[#C7A688]"
+      onPointerDown={handleStagePointerDown}
+      onPointerUp={handleStagePointerUp}
+      onClickCapture={handleStageClickCapture}
+      className="relative w-full h-full overflow-hidden select-none bg-[#C7A688] touch-pan-y"
     >
       <AnimatePresence mode="wait" initial={false}>
         <motion.div

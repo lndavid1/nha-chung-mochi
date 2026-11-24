@@ -1418,36 +1418,23 @@ export default function App() {
             )}
           </AnimatePresence>
 
-          {/* THANH CHUYỂN 3 PHÒNG NỔI SIÊU GỌN (Room Switcher Pill) */}
-          <div className="pointer-events-auto mx-auto cozy-glass h-8 px-1.5 rounded-full border-[1.8px] border-[#4A3525] flex items-center gap-1 shadow-sm">
-            {[
-              { id: 'living', label: 'Phòng khách', icon: Home },
-              { id: 'kitchen', label: 'Nhà bếp', icon: ChefHat },
-              { id: 'bathroom', label: 'Phòng tắm', icon: Bath }
-            ].map((rm) => {
-              const IconComp = rm.icon;
-              const active = currentRoom === rm.id;
-              return (
-                <button
+          {/* CHẤM CHỈ BÁO PHÒNG TỐI GIẢN (Vuốt ngang Trái/Phải để chuyển phòng) */}
+          <div className="pointer-events-auto mx-auto flex items-center gap-2 px-3 py-1 rounded-full cozy-glass border-[1.5px] border-[#4A3525]/80 shadow-sm">
+            <span className="text-[10px] font-black text-[#4A3525] whitespace-nowrap">
+              ‹ {ROOM_LIST.find((r) => r.id === currentRoom)?.label || 'Phòng khách'} ›
+            </span>
+            <div className="flex items-center gap-1">
+              {ROOM_LIST.map((rm) => (
+                <span
                   key={rm.id}
-                  type="button"
-                  onClick={() => {
-                    if (currentRoom !== rm.id) {
-                      soundEngine.play('sheetOpen');
-                      handleChangeRoom(rm.id);
-                    }
-                  }}
-                  className={`h-6 px-2.5 rounded-full text-[10.5px] font-black flex items-center gap-1 transition-all whitespace-nowrap ${
-                    active
-                      ? 'bg-[#FFE082] text-[#4A3525] border border-[#4A3525] shadow-sm'
-                      : 'text-[#7D6352] hover:text-[#4A3525]'
+                  className={`h-1.5 rounded-full transition-all ${
+                    currentRoom === rm.id
+                      ? 'w-4 bg-[#FF9B71] border border-[#4A3525]'
+                      : 'w-1.5 bg-[#4A3525]/25'
                   }`}
-                >
-                  <IconComp className="w-3 h-3 shrink-0" />
-                  <span>{rm.label}</span>
-                </button>
-              );
-            })}
+                />
+              ))}
+            </div>
           </div>
 
           {/* THANH 4 CHỈ SỐ TINH GỌN */}

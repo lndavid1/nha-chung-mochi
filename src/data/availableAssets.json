@@ -71,6 +71,24 @@
     "squid",
     "veggie"
   ],
-  "kitchen": [],
-  "bathroom": []
+  "kitchen": [
+    "bowl_cat",
+    "fridge_cream",
+    "fridge_mint",
+    "kdecor_spice",
+    "kfloor_checker",
+    "kwall_tile_cream",
+    "stove_oak",
+    "table_round"
+  ],
+  "bathroom": [
+    "bdecor_towel",
+    "bfloor_pebble",
+    "bmat_paw",
+    "bprop_basket",
+    "bwall_blue_tile",
+    "tub_hinoki",
+    "tub_vintage",
+    "vanity_arch"
+  ]
 }
