@@ -273,9 +273,9 @@ export default function RoomStage({
     !equipped.wallDecor || equipped.wallDecor === 'wdecor_fairy';
 
   // Dynamic Horizontal Clamping cho bong bóng thoại AI (chống tràn mép trái/phải iPhone 390px)
-  const bubbleCenterX = Math.min(Math.max(petPos.x, 30), 70);
+  // Bong bóng luôn căn giữa màn hình (lề tối thiểu 14px), chỉ mũi tên dịch theo vị trí thú
   // Vị trí mũi tên tam giác tương đối trong hộp thoại để luôn chỉ thẳng về phía đầu thú
-  const arrowOffsetPx = Math.max(-68, Math.min(68, (petPos.x - bubbleCenterX) * 3.4));
+  const arrowOffsetPx = (petPos.x - 50) * 3.9;
   // Vị trí dọc bám ngay phía trên đầu thú (đỉnh đầu thú cách tâm petPos.y khoảng ~9% chiều cao)
   const bubbleBottomPercent = Math.min(82, Math.max(22, 100 - (petPos.y - 10)));
 
@@ -304,8 +304,8 @@ export default function RoomStage({
         onClick={handleTouchWallDecor}
         style={
           isFairyWallDecor
-            ? { top: '7%', left: '12%', width: '76%' }
-            : { top: '11%', left: '44%', width: '22%' }
+            ? { top: '13%', left: '12%', width: '76%' }
+            : { top: '13%', left: '44%', width: '22%' }
         }
         className="absolute z-[10] active:scale-95 transition-transform focus:outline-none"
         title="Chạm để tương tác đồ treo tường"
@@ -502,8 +502,8 @@ export default function RoomStage({
         type="button"
         onClick={handleTouchBed}
         style={{
-          left: '29%',
-          top: '51%',
+          left: '20%',
+          top: '48%',
           width: '32%'
         }}
         className="absolute z-[25] active:scale-95 transition-transform focus:outline-none cursor-pointer"
@@ -524,9 +524,10 @@ export default function RoomStage({
         onClick={handleTouchDecor}
         whileTap={{ scale: 0.95 }}
         style={{
-          right: '4%',
-          top: '37%',
-          width: '31%'
+          right: '5%',
+          top: '38%',
+          width: '28%',
+          maxWidth: '94%'
         }}
         className="absolute z-[25] focus:outline-none cursor-pointer"
         title="Chạm để bật/tắt đèn hoặc tương tác nội thất"
@@ -752,35 +753,36 @@ export default function RoomStage({
           animate={{
             opacity: 1,
             scale: 1,
-            left: `${bubbleCenterX}%`,
             bottom: `${bubbleBottomPercent}%`
           }}
           transition={{ duration: 0.45, ease: 'easeOut' }}
-          className="absolute -translate-x-1/2 z-[50] max-w-[230px] w-max bg-[#FFFDF9]/95 text-[#4A3525] border-2 border-[#4A3525]/85 rounded-2xl px-3 py-2 shadow-lg"
+          style={{ left: 14, right: 14 }}
+          className="absolute z-[50] flex justify-center pointer-events-none"
         >
-          <div className="flex items-start gap-2">
-            <p className="text-[11.5px] font-extrabold text-[#4A3525] leading-snug whitespace-normal break-words">
-              {typedDialogue}
-            </p>
-            <button
-              type="button"
-              onClick={onOpenChat}
-              className="p-1 rounded-lg bg-[#FFF3E2] border border-[#4A3525]/35 text-[#4A3525] shrink-0 active:scale-90 mt-0.5"
-              title="Mở khung trò chuyện với bé"
-            >
-              <MessageSquareText className="w-3.5 h-3.5" />
-            </button>
+          <div className="pointer-events-auto relative w-fit max-w-[min(280px,calc(100vw-28px))] bg-[#FFFDF9]/95 text-[#4A3525] border-2 border-[#4A3525]/85 rounded-2xl px-3 py-2 shadow-lg">
+            <div className="flex items-start gap-2">
+              <p className="text-[11.5px] font-extrabold text-[#4A3525] leading-snug whitespace-normal break-words min-w-0">
+                {typedDialogue}
+              </p>
+              <button
+                type="button"
+                onClick={onOpenChat}
+                className="p-1 rounded-lg bg-[#FFF3E2] border border-[#4A3525]/35 text-[#4A3525] shrink-0 active:scale-90 mt-0.5"
+                title="Mở khung trò chuyện với bé"
+              >
+                <MessageSquareText className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {/* Mũi tên tam giác dịch theo vị trí thú, luôn nằm trong thân bong bóng */}
+            <div
+              style={{
+                left: `clamp(18px, calc(50% + ${arrowOffsetPx}px), calc(100% - 18px))`
+              }}
+              className="absolute -translate-x-1/2 -bottom-[7px] w-3 h-3 bg-[#FFFDF9] border-r-2 border-b-2 border-[#4A3525]/85 rotate-45"
+            />
           </div>
-          {/* Mũi tên tam giác luôn hướng thẳng xuống đầu thú cưng */}
-          <div
-            style={{
-              left: `calc(50% + ${arrowOffsetPx}px)`
-            }}
-            className="absolute -translate-x-1/2 -bottom-[7px] w-3 h-3 bg-[#FFFDF9] border-r-2 border-b-2 border-[#4A3525]/85 rotate-45"
-          />
         </motion.div>
       )}
-
       {/* Nút Co-op "Cùng chơi tung bóng (+20 Xu)" đặt gọn ngay trên cụm Bottom Dock */}
       {bothOnline && !isDecoratorMode && !isTrayOpen && !isPhotoMode && (
         <motion.div

@@ -1040,11 +1040,11 @@ export default function App() {
   ];
 
   return (
-    <div className="relative w-full max-w-[430px] mx-auto h-[100dvh] overflow-hidden select-none bg-[#FFF8F0] shadow-2xl">
+    <div className="fixed inset-x-0 top-0 bottom-0 mx-auto w-full max-w-[430px] overflow-hidden select-none bg-[#C7A688] shadow-2xl">
       {/* 1. FULL-BLEED 2.5D ROOM CANVAS (Tràn viền 100dvh, không viền đen thô bao quanh) */}
       <div
         className={`w-full transition-all duration-300 ${
-          isDecoratorMode || isCalibratorOpen ? 'h-[66dvh]' : 'h-[100dvh]'
+          isDecoratorMode || isCalibratorOpen ? 'h-[66%]' : 'h-full'
         }`}
       >
         <RoomStage
@@ -1080,7 +1080,7 @@ export default function App() {
       {/* 2. FLOATING TOP BAR (z-[55] — Nằm trên lớp ánh sáng z-[40], tôn trọng safe-area-inset-top) */}
       <div
         style={{
-          top: 'max(env(safe-area-inset-top, 10px), 10px)'
+          top: 'max(env(safe-area-inset-top, 12px), 12px)'
         }}
         className="absolute inset-x-0 z-[55] px-3 pointer-events-none flex flex-col gap-1.5"
       >
@@ -1103,127 +1103,126 @@ export default function App() {
         )}
 
         <header
-          className="flex items-center justify-between gap-2"
+          className="flex flex-col gap-2 w-full"
           onClickCapture={() => soundEngine.play('tap')}
         >
-          {!isPhotoMode ? (
-            <div className="pointer-events-auto cozy-glass rounded-full px-3 py-1.5 border-[2px] border-[#4A3525] flex items-center gap-2.5 shadow-sm">
-              <span className="text-xs font-black text-[#4A3525] truncate max-w-[84px]">
-                {pet.name || 'Mochi'}
-              </span>
-
-              <div className="h-3.5 w-[1.5px] bg-[#4A3525]/20" />
-
-              <div
-                className="flex items-center gap-0.5 text-xs font-black text-[#E85D75] tabular-nums"
-                title="Chuỗi ngày Co-op Streak"
-              >
-                <Flame className="w-3.5 h-3.5 fill-[#FF9B71]" />
-                <span>{roomData?.streak ?? 1}</span>
-              </div>
-
-              <div className="h-3.5 w-[1.5px] bg-[#4A3525]/20" />
-
-              <div
-                className="flex items-center gap-1 text-xs font-black text-[#4A3525]"
-                title="Ngân quỹ Xu chung"
-              >
-                <Coins className="w-3.5 h-3.5 text-[#E87A4D]" />
-                <AnimatedCoinCounter value={roomData?.coins ?? 120} />
-              </div>
-            </div>
-          ) : (
-            <div />
-          )}
-
-          <div className="pointer-events-auto flex items-center gap-1.5">
-            {!isPhotoMode && (
-              <div className="cozy-glass rounded-full px-2.5 py-1.5 border-[2px] border-[#4A3525] flex items-center gap-1.5">
-                <span
-                  className={`w-2.5 h-2.5 rounded-full border border-[#4A3525] ${
-                    isPartnerOnline ? 'bg-[#88C9A1] animate-pulse' : 'bg-[#D6C7B8]'
-                  }`}
-                />
-                <span className="text-[10.5px] font-black text-[#4A3525] truncate max-w-[92px]">
-                  {bothOnline
-                    ? 'Đang ở nhà'
-                    : partnerInfo?.name
-                    ? partnerInfo.name
-                    : session.roomId}
+          {/* HÀNG 1: Thông tin thú | Loa • Photo • Cài đặt */}
+          <div className="flex items-center justify-between gap-2 w-full">
+            {!isPhotoMode ? (
+              <div className="pointer-events-auto cozy-glass rounded-full px-2.5 py-1.5 border-[2px] border-[#4A3525] flex items-center gap-2 shadow-sm min-w-0 whitespace-nowrap">
+                <span className="text-xs font-black text-[#4A3525] truncate max-w-[76px]">
+                  {pet.name || 'Mochi'}
                 </span>
+                <div className="h-3.5 w-[1.5px] bg-[#4A3525]/20 shrink-0" />
+                <div
+                  className="flex items-center gap-0.5 text-xs font-black text-[#E85D75] tabular-nums shrink-0"
+                  title="Chuỗi ngày Co-op Streak"
+                >
+                  <Flame className="w-3.5 h-3.5 fill-[#FF9B71]" />
+                  <span>{roomData?.streak ?? 1}</span>
+                </div>
+                <div className="h-3.5 w-[1.5px] bg-[#4A3525]/20 shrink-0" />
+                <div
+                  className="flex items-center gap-1 text-xs font-black text-[#4A3525] shrink-0"
+                  title="Ngân quỹ Xu chung"
+                >
+                  <Coins className="w-3.5 h-3.5 text-[#E87A4D]" />
+                  <AnimatedCoinCounter value={roomData?.coins ?? 120} />
+                </div>
               </div>
+            ) : (
+              <div />
             )}
 
-            {!isPhotoMode && !isPartnerOnline && (
-              <button
-                type="button"
-                onClick={handleNudgePartner}
-                className="cozy-glass w-9 h-9 rounded-full border-[2px] border-[#4A3525] bg-[#FFB7C5]/90 flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
-                title={`Gọi ${partnerInfo?.name || 'người kia'} về nhà`}
-              >
-                <BellRing className="w-4 h-4" />
-              </button>
-            )}
+            <div className="pointer-events-auto flex items-center gap-1.5 shrink-0">
+              {!isPhotoMode && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundEngine.setSettings({ muted: !snd.muted });
+                    if (snd.muted) soundEngine.play('tap');
+                  }}
+                  className="cozy-glass w-8 h-8 rounded-full border-[2px] border-[#4A3525] flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
+                  title={snd.muted ? 'Bật âm thanh' : 'Tắt toàn bộ âm thanh'}
+                >
+                  {snd.muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                </button>
+              )}
 
-            {!isPhotoMode && (
               <button
                 type="button"
                 onClick={() => {
-                  soundEngine.setSettings({ muted: !snd.muted });
-                  if (snd.muted) soundEngine.play('tap');
+                  setIsPhotoMode((prev) => !prev);
+                  setActiveTray(null);
+                  if (isDecoratorMode) {
+                    setIsDecoratorMode(false);
+                    setPreviewEquipped(null);
+                  }
                 }}
-                className="cozy-glass w-9 h-9 rounded-full border-[2px] border-[#4A3525] flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
-                title={snd.muted ? 'Bật âm thanh' : 'Tắt toàn bộ âm thanh'}
+                className="cozy-glass w-8 h-8 rounded-full border-[2px] border-[#4A3525] flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
+                title={isPhotoMode ? 'Hiện lại giao diện' : 'Ẩn HUD để ngắm phòng / chụp ảnh'}
               >
-                {snd.muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                {isPhotoMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
-            )}
 
-            <button
-              type="button"
-              onClick={() => {
-                setIsPhotoMode((prev) => !prev);
-                setActiveTray(null);
-                if (isDecoratorMode) {
-                  setIsDecoratorMode(false);
-                  setPreviewEquipped(null);
-                }
-              }}
-              className="cozy-glass w-9 h-9 rounded-full border-[2px] border-[#4A3525] flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
-              title={isPhotoMode ? 'Hiện lại giao diện' : 'Ẩn HUD để ngắm phòng / chụp ảnh'}
-            >
-              {isPhotoMode ? (
-                <EyeOff className="w-4 h-4" />
-              ) : (
-                <Eye className="w-4 h-4" />
+              {!isPhotoMode && (
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('settings')}
+                  className="cozy-glass w-8 h-8 rounded-full border-[2px] border-[#4A3525] flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
+                  title="Cài đặt phòng & Bộ não AI"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
               )}
-            </button>
+            </div>
+          </div>
 
-            {!isPhotoMode && (
+          {/* HÀNG 2: Partner + Chuông gọi về nhà | Góc Vui Chơi */}
+          {!isPhotoMode && (
+            <div className="flex items-center justify-between gap-2 w-full">
+              <div className="pointer-events-auto flex items-center gap-1.5 min-w-0">
+                <div className="cozy-glass rounded-full h-7 px-2.5 border-[2px] border-[#4A3525] flex items-center gap-1.5 min-w-0">
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full border border-[#4A3525] shrink-0 ${
+                      isPartnerOnline ? 'bg-[#88C9A1] animate-pulse' : 'bg-[#D6C7B8]'
+                    }`}
+                  />
+                  <span className="text-xs font-black text-[#4A3525] truncate max-w-[110px] whitespace-nowrap">
+                    {bothOnline
+                      ? 'Đang ở nhà'
+                      : partnerInfo?.name
+                      ? partnerInfo.name
+                      : session.roomId}
+                  </span>
+                </div>
+                {!isPartnerOnline && (
+                  <button
+                    type="button"
+                    onClick={handleNudgePartner}
+                    className="cozy-glass h-7 px-2.5 rounded-full border-[2px] border-[#4A3525] bg-[#FFB7C5]/90 flex items-center gap-1 text-xs font-black text-[#4A3525] active:scale-90 transition-transform whitespace-nowrap shrink-0"
+                    title={`Gọi ${partnerInfo?.name || 'người kia'} về nhà`}
+                  >
+                    <BellRing className="w-3.5 h-3.5" />
+                    <span>Gọi</span>
+                  </button>
+                )}
+              </div>
+
               <button
                 type="button"
                 onClick={() => {
                   setActiveTray(null);
                   setActiveModal('arcade');
                 }}
-                className="cozy-glass w-9 h-9 rounded-full border-[2px] border-[#4A3525] bg-[#FFE082]/90 flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
-                title="Góc Vui Chơi • Mochi Chạy Phố"
+                className="pointer-events-auto cozy-glass h-7 px-3 rounded-full border-[2px] border-[#4A3525] bg-[#FFE082]/90 flex items-center gap-1 text-xs font-black text-[#4A3525] active:scale-90 transition-transform whitespace-nowrap shrink-0"
+                title="Góc Vui Chơi • Mini-game"
               >
-                <Gamepad2 className="w-4 h-4" />
+                <Gamepad2 className="w-3.5 h-3.5" />
+                <span>Chơi game</span>
               </button>
-            )}
-
-            {!isPhotoMode && (
-              <button
-                type="button"
-                onClick={() => setActiveModal('settings')}
-                className="cozy-glass w-9 h-9 rounded-full border-[2px] border-[#4A3525] flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
-                title="Cài đặt phòng & Bộ não AI"
-              >
-                <Settings className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+            </div>
+          )}
         </header>
       </div>
 
@@ -1354,20 +1353,20 @@ export default function App() {
           </AnimatePresence>
 
           {/* THANH 4 CHỈ SỐ TINH GỌN */}
-          <div className="pointer-events-auto grid grid-cols-4 gap-1.5">
+          <div className="pointer-events-auto grid grid-cols-4 gap-1.5 w-full">
             {statItems.map((st) => {
               const IconComp = st.icon;
               const isLow = st.value < 30;
               return (
                 <div
                   key={st.id}
-                  className={`cozy-glass rounded-2xl px-2.5 py-1.5 border-[1.8px] transition-all ${
+                  className={`cozy-glass rounded-2xl px-2 py-1.5 border-[1.8px] transition-all min-w-0 ${
                     isLow
                       ? 'border-[#E85D75] bg-[#FFF0F3]/95 animate-bounce'
                       : 'border-[#4A3525]'
                   }`}
                 >
-                  <div className="flex items-center justify-between text-[10.5px] font-black text-[#4A3525] mb-1">
+                  <div className="flex items-center justify-between text-[11px] whitespace-nowrap font-black text-[#4A3525] mb-1">
                     <span className="flex items-center gap-1">
                       <IconComp className="w-3 h-3 text-[#4A3525]" />
                       {st.label}
@@ -1402,7 +1401,7 @@ export default function App() {
               }`}
             >
               <Utensils className="w-4 h-4" />
-              <span className="text-[10.5px] font-black">Cho ăn</span>
+              <span className="text-[10.5px] leading-tight whitespace-nowrap font-black">Cho ăn</span>
             </button>
 
             <button
@@ -1417,7 +1416,7 @@ export default function App() {
               }`}
             >
               <Sparkles className="w-4 h-4" />
-              <span className="text-[10.5px] font-black">Chăm sóc</span>
+              <span className="text-[10.5px] leading-tight whitespace-nowrap font-black">Chăm sóc</span>
             </button>
 
             <button
@@ -1430,7 +1429,7 @@ export default function App() {
               className="tactile-btn py-2 rounded-[20px] border-[1.8px] border-[#4A3525] bg-[#FF9B71] text-[#4A3525] flex flex-col items-center justify-center gap-0.5"
             >
               <Palette className="w-4 h-4" />
-              <span className="text-[10.5px] font-black">Trang trí</span>
+              <span className="text-[10.5px] leading-tight whitespace-nowrap font-black">Trang trí</span>
             </button>
 
             <button
@@ -1442,7 +1441,7 @@ export default function App() {
               className="tactile-btn py-2 rounded-[20px] border-[1.8px] border-[#4A3525] bg-[#FFB7C5] text-[#4A3525] flex flex-col items-center justify-center gap-0.5"
             >
               <MessageCircleHeart className="w-4 h-4" />
-              <span className="text-[10.5px] font-black">Trò chuyện</span>
+              <span className="text-[10.5px] leading-tight whitespace-nowrap font-black">Trò chuyện</span>
             </button>
 
             <button
@@ -1454,7 +1453,7 @@ export default function App() {
               className="tactile-btn py-2 rounded-[20px] border-[1.8px] border-[#4A3525] bg-[#FFFDF9] text-[#4A3525] flex flex-col items-center justify-center gap-0.5"
             >
               <BookOpen className="w-4 h-4" />
-              <span className="text-[10.5px] font-black">Nhật ký</span>
+              <span className="text-[10.5px] leading-tight whitespace-nowrap font-black">Nhật ký</span>
             </button>
           </nav>
         </div>
