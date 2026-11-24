@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF7ED" />
+      <stop offset="100%" stop-color="#FFEDD5" />
+    </linearGradient>
+    <linearGradient id="roof" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FB923C" />
+      <stop offset="100%" stop-color="#F97316" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="115" fill="url(#bg)" />
+  <!-- Cute House Roof -->
+  <path d="M96 220 L256 96 L416 220 Z" fill="url(#roof)" stroke="#EA580C" stroke-width="12" stroke-linejoin="round" />
+  <!-- Cute Mochi Cat Body -->
+  <ellipse cx="256" cy="310" rx="125" ry="110" fill="#FFFFFF" stroke="#78350F" stroke-width="12" />
+  <!-- Cat Ears -->
+  <path d="M155 240 L140 165 L210 210 Z" fill="#FFFFFF" stroke="#78350F" stroke-width="12" stroke-linejoin="round" />
+  <path d="M160 225 L152 182 L196 210 Z" fill="#FDA4AF" />
+  <path d="M357 240 L372 165 L302 210 Z" fill="#FFFFFF" stroke="#78350F" stroke-width="12" stroke-linejoin="round" />
+  <path d="M352 225 L360 182 L316 210 Z" fill="#FDA4AF" />
+  <!-- Orange Patch -->
+  <path d="M256 200 C295 200 325 220 330 250 C290 255 265 235 256 200 Z" fill="#FDBA74" />
+  <!-- Eyes -->
+  <circle cx="205" cy="295" r="14" fill="#451A03" />
+  <circle cx="200" cy="290" r="4" fill="#FFFFFF" />
+  <circle cx="307" cy="295" r="14" fill="#451A03" />
+  <circle cx="302" cy="290" r="4" fill="#FFFFFF" />
+  <!-- Blush -->
+  <ellipse cx="175" cy="318" rx="16" ry="9" fill="#FDA4AF" opacity="0.7" />
+  <ellipse cx="337" cy="318" rx="16" ry="9" fill="#FDA4AF" opacity="0.7" />
+  <!-- Cute Mouth w -->
+  <path d="M240 315 Q248 327 256 315 Q264 327 272 315" fill="none" stroke="#78350F" stroke-width="9" stroke-linecap="round" />
+  <!-- Heart above -->
+  <path d="M256 168 C256 168 232 148 232 133 C232 122 242 115 250 122 L256 128 L262 122 C270 115 280 122 280 133 C280 148 256 168 256 168 Z" fill="#FB7185" />
+</svg>
