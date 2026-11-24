@@ -32,7 +32,18 @@ if (localChannel) {
   };
 }
 
-// Đọc config từ .env hoặc localStorage
+// Cấu hình Firebase mặc định của dự án petgame-ee3e9
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyDiVowc1HIkK1krv4wWSwsUb2-QaVNJAvY',
+  authDomain: 'petgame-ee3e9.firebaseapp.com',
+  databaseURL: 'https://petgame-ee3e9-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'petgame-ee3e9',
+  storageBucket: 'petgame-ee3e9.firebasestorage.app',
+  messagingSenderId: '307758124213',
+  appId: '1:307758124213:web:06db0997e2187b553182fc'
+};
+
+// Đọc config từ .env, localStorage hoặc cấu hình mặc định petgame-ee3e9
 export function getResolvedFirebaseConfig() {
   const envConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
@@ -60,7 +71,7 @@ export function getResolvedFirebaseConfig() {
     // ignore parse error
   }
 
-  return { config: null, source: 'none' };
+  return { config: DEFAULT_FIREBASE_CONFIG, source: 'default' };
 }
 
 export function saveFirebaseConfigToLocal(configObj) {
