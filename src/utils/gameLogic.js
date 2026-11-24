@@ -1,40 +1,40 @@
-// Catalog 8 Slot nội thất + Thức ăn + Tính toán suy giảm chỉ số + Nén ảnh WebP Base64
+// Catalog 10 Slot nội thất + 6 Phụ kiện thú cưng + Thức ăn + Tính suy giảm chỉ số + Nén ảnh WebP Base64
+// Giữ nguyên 100% tương thích ngược với ID đồ cũ trên Firebase Realtime Database
 
 export const PET_TYPES = [
   {
     id: 'cat',
     name: 'Mèo Mochi',
     defaultName: 'Mochi',
-    desc: 'Tròn ủm như bánh nếp, thích nằm ườn và hay mách lẻo',
-    badge: '🐱 Hệ Quấn Chủ'
+    desc: 'Trắng kem đốm tai cam mật, thích nằm ườn và hay mách lẻo chuyện hai chủ',
+    badge: 'Hệ Quấn Chủ'
   },
   {
     id: 'corgi',
     name: 'Cún Corgi',
     defaultName: 'Bơ',
-    desc: 'Chân ngắn mông trái tim, siêu tăng động khi 2 chủ cùng online',
-    badge: '🐶 Hệ Năng Lượng'
+    desc: 'Lông vàng mật bụng trắng, tai vểnh mông tròn, siêu phấn khích khi 2 chủ online',
+    badge: 'Hệ Năng Lượng'
   },
   {
     id: 'bunny',
     name: 'Thỏ Bông',
     defaultName: 'Bông',
-    desc: 'Tai dài mềm mại, thích phòng sạch thơm và hay hờn dỗi nhẹ',
-    badge: '🐰 Hệ Đáng Yêu'
+    desc: 'Trắng hồng phấn tai dài mềm mại, thích phòng thơm tho và hay làm nũng',
+    badge: 'Hệ Đáng Yêu'
   }
 ];
 
 export const FOOD_CATALOG = [
   {
     id: 'kibble',
-    name: 'Hạt Dinh Dưỡng',
+    name: 'Bát Hạt Sữa Ấm',
     price: 0,
     hunger: 18,
-    mood: 5,
-    energy: 4,
-    desc: 'Luôn miễn phí cho bé không bao giờ bị đói',
-    icon: '🥣',
-    color: '#FDE68A'
+    mood: 6,
+    energy: 5,
+    desc: 'Luôn miễn phí để bé không bao giờ bị đói bụng',
+    color: '#FFE082'
   },
   {
     id: 'salmon',
@@ -43,85 +43,106 @@ export const FOOD_CATALOG = [
     hunger: 35,
     mood: 18,
     energy: 10,
-    desc: 'Thịt cá tươi béo ngậy, tăng mạnh độ no & vui vẻ',
-    icon: '🍣',
-    color: '#FDA4AF'
+    desc: 'Cá hồi tươi béo ngậy, tăng mạnh độ no và vui vẻ',
+    color: '#FF9B71'
   },
   {
     id: 'cake',
-    name: 'Bánh Kem Dâu',
+    name: 'Bánh Kem Dâu Tây',
     price: 25,
     hunger: 25,
     mood: 32,
     energy: 15,
-    desc: 'Món tráng miệng ngọt ngào làm bé nhảy chân sáo',
-    icon: '🍰',
-    color: '#F9A8D4'
+    desc: 'Bánh kem mềm phủ dâu đỏ mọng làm bé nhảy chân sáo',
+    color: '#FFB7C5'
   },
   {
     id: 'boba',
-    name: 'Sữa Tươi Trân Châu',
+    name: 'Sữa Tươi Đường Đen',
     price: 20,
     hunger: 20,
     mood: 26,
-    energy: 20,
-    desc: 'Nạp năng lượng cấp tốc để thức chơi cùng hai chủ',
-    icon: '🧋',
-    color: '#FDBA74'
+    energy: 22,
+    desc: 'Trân châu đường đen dẻo thơm nạp đầy năng lượng',
+    color: '#E6C29F'
   }
 ];
 
+// Danh sách các Slot hiển thị trong Live Decorator Studio (kèm tọa độ Hotspot trên phòng)
 export const ROOM_SLOTS = [
-  { id: 'wall', label: 'Tường nhà', icon: '🎨' },
-  { id: 'floor', label: 'Sàn nhà', icon: '🪵' },
-  { id: 'window', label: 'Cửa sổ', icon: '🪟' },
-  { id: 'bed', label: 'Giường thú', icon: '🛏️' },
-  { id: 'rug', label: 'Thảm sàn', icon: '🧶' },
-  { id: 'plant', label: 'Cây cảnh', icon: '🪴' },
-  { id: 'decor', label: 'Nội thất', icon: '📚' }
+  { id: 'wall', label: 'Tường nhà', hotspot: { x: 26, y: 18 } },
+  { id: 'floor', label: 'Sàn nhà', hotspot: { x: 74, y: 86 } },
+  { id: 'window', label: 'Cửa sổ', hotspot: { x: 19, y: 33 } },
+  { id: 'bed', label: 'Giường thú', hotspot: { x: 22, y: 74 } },
+  { id: 'rug', label: 'Thảm sàn', hotspot: { x: 52, y: 78 } },
+  { id: 'plant', label: 'Cây cảnh', hotspot: { x: 16, y: 56 } },
+  { id: 'decor', label: 'Nội thất', hotspot: { x: 82, y: 58 } },
+  { id: 'wallDecor', label: 'Treo tường', hotspot: { x: 52, y: 16 } },
+  { id: 'accessory', label: 'Phụ kiện thú', hotspot: { x: 52, y: 63 } }
 ];
 
 export const FURNITURE_CATALOG = {
   wall: [
-    { id: 'wall_cream', slot: 'wall', name: 'Kem Ấm Vanilla', price: 0, desc: 'Màu kem dịu mắt ấm cúng mặc định', previewColor: '#FFF3E0' },
-    { id: 'wall_pink', slot: 'wall', name: 'Hồng Đào Pastel', price: 40, desc: 'Tường hồng sọc caro ngọt ngào lãng mạn', previewColor: '#FCE7F3' },
-    { id: 'wall_mint', slot: 'wall', name: 'Xanh Bạc Hà', price: 45, desc: 'Mát mẻ trong lành như quán cafe mùa hạ', previewColor: '#DCFCE7' },
-    { id: 'wall_brick', slot: 'wall', name: 'Gạch Cổ Điển Loft', price: 65, desc: 'Tường gạch ấm áp phong cách studio châu Âu', previewColor: '#FED7AA' }
+    { id: 'wall_cream', slot: 'wall', name: 'Kem Sữa Phào Gỗ', price: 0, desc: 'Tường kem sữa ấm áp kèm phào chỉ gỗ sồi thanh lịch' },
+    { id: 'wall_pink', slot: 'wall', name: 'Hồng Phấn Chấm Bi', price: 40, desc: 'Tường hồng pastel điểm chấm bi kem ngọt ngào' },
+    { id: 'wall_mint', slot: 'wall', name: 'Xanh Sage Kẻ Sọc', price: 45, desc: 'Sọc dọc xanh lá matcha dịu mắt phong cách Bắc Âu' },
+    { id: 'wall_brick', slot: 'wall', name: 'Gạch Thẻ Trắng Vintage', price: 65, desc: 'Tường gạch thẻ kem trắng có mạch vữa ấm cúng' },
+    { id: 'wall_wainscot', slot: 'wall', name: 'Lam Gỗ Nhật Bản', price: 85, desc: 'Tường ốp lam gỗ nửa thân phong cách Muji tối giản' }
   ],
   floor: [
-    { id: 'floor_oak', slot: 'floor', name: 'Gỗ Sồi Sáng', price: 0, desc: 'Sàn gỗ sồi tự nhiên ấm chân', previewColor: '#E6C29F' },
-    { id: 'floor_walnut', slot: 'floor', name: 'Gỗ Trầm Cổ Điển', price: 45, desc: 'Gỗ óc chó nâu trầm sang trọng', previewColor: '#A47551' },
-    { id: 'floor_terrazzo', slot: 'floor', name: 'Đá Terrazzo', price: 55, desc: 'Đá mài hạt màu trẻ trung nghệ thuật', previewColor: '#F3E8EE' },
-    { id: 'floor_meadow', slot: 'floor', name: 'Thảm Cỏ Picnic', price: 70, desc: 'Biến sàn phòng thành đồng cỏ xanh mướt', previewColor: '#BBF7D0' }
+    { id: 'floor_oak', slot: 'floor', name: 'Sồi Ghép Xương Cá', price: 0, desc: 'Sàn gỗ sồi sáng lát họa tiết xương cá tinh tế' },
+    { id: 'floor_walnut', slot: 'floor', name: 'Óc Chó Vân Trầm', price: 45, desc: 'Gỗ óc chó nâu trầm ấm áp có vân mắt gỗ tự nhiên' },
+    { id: 'floor_checker', slot: 'floor', name: 'Gạch Caro Kem Nâu', price: 55, desc: 'Sàn gạch caro cổ điển như tiệm bánh châu Âu' },
+    { id: 'floor_terrazzo', slot: 'floor', name: 'Đá Terrazzo Pastel', price: 60, desc: 'Đá mài nghệ thuật điểm hạt thạch anh hồng và xanh' },
+    { id: 'floor_meadow', slot: 'floor', name: 'Hiên Gỗ Viền Cỏ', price: 75, desc: 'Sàn ván gỗ ban công điểm thảm cỏ non xanh mát' }
   ],
   window: [
-    { id: 'win_wood', slot: 'window', name: 'Cửa Gỗ Vuông', price: 0, desc: 'Khung cửa gỗ có rèm kem nhìn ra bầu trời', previewColor: '#D97706' },
-    { id: 'win_arch', slot: 'window', name: 'Cửa Vòm Pháp', price: 60, desc: 'Cửa sổ vòm lãng mạn kèm dây đèn lấp lánh', previewColor: '#F472B6' },
-    { id: 'win_bay', slot: 'window', name: 'Cửa Kính Panorama', price: 85, desc: 'Khung kính rộng ngắm trọn hoàng hôn và sao đêm', previewColor: '#38BDF8' }
+    { id: 'win_wood', slot: 'window', name: 'Cửa Vòm Gỗ Pháp', price: 0, desc: 'Khung cửa gỗ vòm cổ điển đón nắng sớm vào phòng' },
+    { id: 'win_arch', slot: 'window', name: 'Cửa Rèm Ren Đung Đưa', price: 60, desc: 'Đôi rèm vải voan ren trắng đung đưa nhẹ theo gió' },
+    { id: 'win_bay', slot: 'window', name: 'Cửa Kính Bệ Hoa', price: 85, desc: 'Khung kính panorama kèm chậu hoa cúc nhỏ trên bệ' },
+    { id: 'win_cabin', slot: 'window', name: 'Cửa Tròn Cabin Gỗ', price: 90, desc: 'Ô cửa sổ tròn ấm cúng như căn gác mái mùa đông' }
   ],
   bed: [
-    { id: 'bed_cushion', slot: 'bed', name: 'Đệm Tròn Mây', price: 0, desc: 'Đệm bông tròn êm ái cho giấc ngủ trưa', previewColor: '#FDBA74' },
-    { id: 'bed_strawberry', slot: 'bed', name: 'Ổ Dâu Tây Ngọt', price: 55, desc: 'Nhà vòm hình quả dâu đỏ mọng siêu cưng', previewColor: '#FB7185' },
-    { id: 'bed_royal', slot: 'bed', name: 'Sofa Hoàng Gia', price: 80, desc: 'Giường nhung vương miện cho boss quý tộc', previewColor: '#C084FC' },
-    { id: 'bed_kotatsu', slot: 'bed', name: 'Chăn Ấm Nhật Bản', price: 95, desc: 'Đệm chăn họa tiết Shiba cực ấm mùa đông', previewColor: '#FBBF24' }
+    { id: 'bed_cushion', slot: 'bed', name: 'Ổ Mây Bông Xù', price: 0, desc: 'Ổ đệm mây bồng bềnh kèm chiếc gối nhỏ êm ái' },
+    { id: 'bed_wood', slot: 'bed', name: 'Giường Gỗ Chăn Caro', price: 55, desc: 'Giường gỗ sồi mini phủ chăn kẻ caro cam đào xếp nếp' },
+    { id: 'bed_strawberry', slot: 'bed', name: 'Giỏ Mây Đệm Nhung', price: 65, desc: 'Giỏ mây đan tay tỉ mỉ lót nệm nhung hồng phấn' },
+    { id: 'bed_kotatsu', slot: 'bed', name: 'Đệm Bánh Mì Nướng', price: 85, desc: 'Đệm lát bánh mì Toast giòn rụm có miếng bơ vàng làm gối' },
+    { id: 'bed_royal', slot: 'bed', name: 'Lều Teepee Cờ Dây', price: 95, desc: 'Lều vải bố ấm cúng trang trí dây cờ tam giác pastel' }
   ],
   rug: [
-    { id: 'rug_oval', slot: 'rug', name: 'Thảm Dệt Kem', price: 0, desc: 'Thảm oval dệt sợi mềm mại giữa phòng', previewColor: '#FDE68A' },
-    { id: 'rug_heart', slot: 'rug', name: 'Thảm Trái Tim Đôi', price: 50, desc: 'Thảm trái tim hồng pastel minh chứng tình bạn/tình yêu', previewColor: '#F472B6' },
-    { id: 'rug_daisy', slot: 'rug', name: 'Thảm Hoa Cúc Họa Mi', price: 65, desc: 'Bông hoa cúc trắng nhụy vàng rực rỡ giữa sàn', previewColor: '#FEF08A' },
-    { id: 'rug_cloud', slot: 'rug', name: 'Thảm Bồng Bềnh Mây', price: 75, desc: 'Thảm mây trắng cầu vồng êm như bước trên trời', previewColor: '#BAE6FD' }
+    { id: 'rug_oval', slot: 'rug', name: 'Thảm Len Tua Rua', price: 0, desc: 'Thảm tròn dệt sợi len kem bơ có tua rua hai đầu' },
+    { id: 'rug_daisy', slot: 'rug', name: 'Thảm Trứng Ốp La', price: 50, desc: 'Thảm bông hình quả trứng ốp la lòng đào siêu cưng' },
+    { id: 'rug_heart', slot: 'rug', name: 'Thảm Gấu Teddy', price: 65, desc: 'Thảm lông mềm hình khuôn mặt gấu Teddy nâu sữa' },
+    { id: 'rug_cloud', slot: 'rug', name: 'Thảm Mây Cầu Vồng', price: 75, desc: 'Thảm đám mây trắng viền pastel bồng bềnh giữa phòng' },
+    { id: 'rug_boho', slot: 'rug', name: 'Thảm Dệt Thổ Cẩm', price: 80, desc: 'Thảm chữ nhật dệt họa tiết hình học Boho ấm cúng' }
   ],
   plant: [
-    { id: 'plant_monstera', slot: 'plant', name: 'Chậu Lá Xẻ Monstera', price: 0, desc: 'Cây trầu bà lá xẻ xanh mát góc phòng', previewColor: '#4ADE80' },
-    { id: 'plant_sakura', slot: 'plant', name: 'Bonsai Đào Sakura', price: 65, desc: 'Tán hoa anh đào hồng rụng cánh thơ mộng', previewColor: '#F9A8D4' },
-    { id: 'plant_cactus', slot: 'plant', name: 'Bộ Ba Xương Rồng', price: 50, desc: 'Chậu xương rồng tai thỏ nở hoa nhỏ xinh', previewColor: '#86EFAC' },
-    { id: 'plant_Vàng', slot: 'plant', name: 'Cây Kim Tiền Phát Tài', price: 80, desc: 'Cây phong thủy đính nơ đỏ may mắn cho cả hai', previewColor: '#FACC15' }
+    { id: 'plant_monstera', slot: 'plant', name: 'Trầu Bà Chậu Chấm Bi', price: 0, desc: 'Cây Monstera lá xẻ xanh mướt trong chậu gốm chấm bi' },
+    { id: 'plant_cactus', slot: 'plant', name: 'Xương Rồng Tai Thỏ', price: 50, desc: 'Xương rồng tai thỏ mũm mĩm nở bông hoa hồng trên đỉnh' },
+    { id: 'plant_Vàng', slot: 'plant', name: 'Cây Cam Mini Trĩu Quả', price: 65, desc: 'Chậu cam Kumquat sai trĩu quả vàng ươm may mắn' },
+    { id: 'plant_sakura', slot: 'plant', name: 'Bình Gốm Hoa Tulip', price: 70, desc: 'Bình gốm thủ công cắm những bông Tulip hồng đào' },
+    { id: 'plant_aquarium', slot: 'plant', name: 'Bể Cá Thủy Sinh Mini', price: 95, desc: 'Bể kính tròn có rong xanh và chú cá cam bơi qua lại' }
   ],
   decor: [
-    { id: 'decor_bookshelf', slot: 'decor', name: 'Kệ Sách Gỗ Nhỏ', price: 0, desc: 'Kệ gỗ đựng truyện tranh và chậu cây mini', previewColor: '#D97706' },
-    { id: 'decor_lamp', slot: 'decor', name: 'Đèn Cây Ánh Trăng', price: 55, desc: 'Đèn lồng cầu tỏa ánh vàng ấm áp mỗi tối', previewColor: '#FDE047' },
-    { id: 'decor_teatable', slot: 'decor', name: 'Bàn Trà Bánh Ngọt', price: 70, desc: 'Bàn gỗ tròn bày sẵn 2 tách trà nóng và macaron', previewColor: '#FDBA74' },
-    { id: 'decor_vinyl', slot: 'decor', name: 'Máy Đĩa Than Lo-Fi', price: 95, desc: 'Góc nhạc đĩa than retro phát nốt nhạc bay bổng', previewColor: '#A78BFA' }
+    { id: 'decor_lamp', slot: 'decor', name: 'Đèn Cây Chao Xếp Ly', price: 0, desc: 'Đèn đứng chao vải xếp ly, chạm vào để bật/tắt ánh vàng ấm' },
+    { id: 'decor_bookshelf', slot: 'decor', name: 'Kệ Sách Gỗ & Cây Rủ', price: 55, desc: 'Kệ gỗ 3 tầng bày sách màu, đồng hồ nhỏ và dây lá rủ' },
+    { id: 'decor_teatable', slot: 'decor', name: 'Bàn Trà Tách Khói Ấm', price: 70, desc: 'Bàn trà gỗ thấp bày ấm trà nóng bốc khói mờ bay lên' },
+    { id: 'decor_vinyl', slot: 'decor', name: 'Tủ Đĩa Than Lo-Fi', price: 95, desc: 'Máy đĩa than cổ điển đĩa xoay chậm, chạm vào phát nốt nhạc' },
+    { id: 'decor_beanbag', slot: 'decor', name: 'Ghế Lười Hạt Xốp', price: 80, desc: 'Ghế lười vải nhung kem kèm gối tựa hình ngôi sao' }
+  ],
+  wallDecor: [
+    { id: 'wdecor_fairy', slot: 'wallDecor', name: 'Dây Đèn Đom Đóm', price: 0, desc: 'Dây đèn Fairy Lights treo vòng cung tỏa sáng lung linh mỗi tối' },
+    { id: 'wdecor_clock', slot: 'wallDecor', name: 'Đồng Hồ Gỗ Thời Gian Thực', price: 50, desc: 'Đồng hồ gỗ tròn có kim giờ và kim phút chạy đúng giờ máy' },
+    { id: 'wdecor_shelf', slot: 'wallDecor', name: 'Kệ Treo Thường Xuân', price: 60, desc: 'Kệ gỗ treo tường đặt lọ gốm và nhánh dây thường xuân rủ lá' },
+    { id: 'wdecor_calendar', slot: 'wallDecor', name: 'Lịch Xé Hôm Nay', price: 45, desc: 'Tờ lịch treo tường tự động in đúng ngày và tháng hôm nay' }
+  ],
+  accessory: [
+    { id: 'acc_none', slot: 'accessory', name: 'Không Đeo Phụ Kiện', price: 0, desc: 'Vẻ đẹp mộc mạc tự nhiên của bé thú cưng' },
+    { id: 'acc_sprout', slot: 'accessory', name: 'Lá Mầm Xanh Non', price: 30, desc: 'Chồi lá mầm nhỏ xinh đung đưa trên đỉnh đầu' },
+    { id: 'acc_bow', slot: 'accessory', name: 'Nơ Ruy-Băng Đỏ', price: 35, desc: 'Chiếc nơ cổ ruy-băng đỏ thắm kèm chuông vàng nhỏ' },
+    { id: 'acc_beret', slot: 'accessory', name: 'Mũ Nồi Họa Sĩ Be', price: 50, desc: 'Mũ nồi beret màu kem bơ phong cách họa sĩ Paris' },
+    { id: 'acc_glasses', slot: 'accessory', name: 'Kính Tròn Học Thức', price: 55, desc: 'Cặp kính gọng vàng tròn xoe trông cực kỳ uyên bác' },
+    { id: 'acc_crown', slot: 'accessory', name: 'Vương Miện Hoàng Gia', price: 85, desc: 'Vương miện vàng đính ngọc hồng cho Boss quyền lực nhất nhà' }
   ]
 };
 
@@ -138,12 +159,38 @@ export const DEFAULT_EQUIPPED = {
   bed: 'bed_cushion',
   rug: 'rug_oval',
   plant: 'plant_monstera',
-  decor: 'decor_bookshelf'
+  decor: 'decor_lamp',
+  wallDecor: 'wdecor_fairy',
+  accessory: 'acc_sprout'
 };
 
-export const DEFAULT_INVENTORY = Object.values(DEFAULT_EQUIPPED);
+export const DEFAULT_INVENTORY = [
+  'wall_cream',
+  'floor_oak',
+  'win_wood',
+  'bed_cushion',
+  'rug_oval',
+  'plant_monstera',
+  'decor_lamp',
+  'decor_bookshelf',
+  'wdecor_fairy',
+  'acc_none',
+  'acc_sprout'
+];
 
-// Sinh mã phòng dễ đọc, chuẩn MOCHI-88 hoặc 6 ký tự đẹp
+// Đảm bảo dữ liệu phòng cũ trên Firebase luôn có đủ các slot mới
+export function normalizeEquippedRoom(rawEquipped = {}) {
+  return {
+    ...DEFAULT_EQUIPPED,
+    ...(rawEquipped || {})
+  };
+}
+
+export function normalizeInventoryList(rawInventory = []) {
+  return Array.from(new Set([...DEFAULT_INVENTORY, ...(Array.isArray(rawInventory) ? rawInventory : [])]));
+}
+
+// Sinh mã phòng dễ đọc, chuẩn MOCHI-88
 export function generateRoomCode() {
   const prefixes = ['MOCHI', 'CORGI', 'HAPPY', 'SWEET', 'COZY'];
   const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -154,28 +201,37 @@ export function generateRoomCode() {
   return `${prefix}-${suffix}`;
 }
 
-// Tính thời điểm trong ngày theo đồng hồ thiết bị
-export function getTimeOfDay(date = new Date()) {
+// Tính thời điểm trong ngày theo đồng hồ thiết bị (hoặc chế độ xem thử overridePeriod)
+export function getTimeOfDay(date = new Date(), overridePeriod = 'auto') {
   const hour = date.getHours();
-  if (hour >= 6 && hour < 16) {
+  const period =
+    overridePeriod && overridePeriod !== 'auto'
+      ? overridePeriod
+      : hour >= 6 && hour < 16
+      ? 'day'
+      : hour >= 16 && hour < 19
+      ? 'sunset'
+      : 'night';
+
+  if (period === 'day') {
     return {
       period: 'day',
-      label: 'Nắng sớm trong lành',
+      label: 'Nắng sớm ấm áp',
       hour,
       isNight: false
     };
   }
-  if (hour >= 16 && hour < 19) {
+  if (period === 'sunset') {
     return {
       period: 'sunset',
-      label: 'Hoàng hôn cam ấm',
+      label: 'Hoàng hôn mật đào',
       hour,
       isNight: false
     };
   }
   return {
     period: 'night',
-    label: 'Đêm đầy sao ấm áp',
+    label: 'Đêm trăng sao dịu',
     hour,
     isNight: true
   };
@@ -188,11 +244,6 @@ export function clampStat(val) {
 
 /**
  * Tính toán suy giảm chỉ số theo thời gian thực kể từ lastUpdated (Client-side timestamp decay)
- * - Đói giảm ~4 điểm/giờ
- * - Vệ sinh giảm ~3 điểm/giờ
- * - Vui giảm ~3.5 điểm/giờ
- * - Năng lượng giảm ~2.5 điểm/giờ khi thức, hoặc tăng +15 điểm/giờ khi bật chế độ ngủ (và các chỉ số khác giảm chậm đi một nửa)
- * - Tự động sinh cục rác/bụi nhỏ (tối đa 3 cục) sau mỗi ~1.5 giờ
  */
 export function computeDecayedState(petState, now = Date.now()) {
   if (!petState) return null;
@@ -200,7 +251,6 @@ export function computeDecayedState(petState, now = Date.now()) {
   const elapsedMs = Math.max(0, now - lastUpdated);
   const elapsedHours = elapsedMs / (1000 * 60 * 60);
 
-  // Nếu dưới 2 phút thì không cần trừ
   if (elapsedHours < 0.03) {
     return {
       ...petState,
@@ -221,15 +271,14 @@ export function computeDecayedState(petState, now = Date.now()) {
   const mood = clampStat((petState.mood ?? 80) - moodLoss);
   const energy = clampStat((petState.energy ?? 85) + energyDelta);
 
-  // Kiểm tra sinh bụi/rác trên sàn
   const currentTrash = Array.isArray(petState.trashList) ? [...petState.trashList] : [];
   const trashToSpawn = Math.min(3 - currentTrash.length, Math.floor(elapsedHours / 1.5));
   if (trashToSpawn > 0) {
     for (let i = 0; i < trashToSpawn; i++) {
       currentTrash.push({
         id: `trash_${now}_${i}_${Math.random().toString(36).slice(2, 6)}`,
-        x: 18 + Math.floor(Math.random() * 64),
-        y: 68 + Math.floor(Math.random() * 16),
+        x: 24 + Math.floor(Math.random() * 52),
+        y: 72 + Math.floor(Math.random() * 14),
         type: i % 2 === 0 ? 'dust' : 'crumb'
       });
     }
@@ -249,7 +298,6 @@ export function computeDecayedState(petState, now = Date.now()) {
   return updated;
 }
 
-// Xác định biểu cảm chủ đạo dựa trên chỉ số & trạng thái
 export function resolvePetEmotion(pet, bothOnline = false) {
   if (!pet) return 'happy';
   if (pet.isSleeping) return 'sleepy';
@@ -267,9 +315,6 @@ export function resolvePetEmotion(pet, bothOnline = false) {
   return pet.emotion || 'happy';
 }
 
-/**
- * Tính thưởng Co-op Combo & Streak khi một người thực hiện hành động chăm sóc
- */
 export function evaluateCoopCareBonus(roomData, currentPlayerRole, baseCoins = 10) {
   const now = Date.now();
   const todayStr = new Date(now).toISOString().slice(0, 10);
@@ -335,17 +380,15 @@ export function compressImageToBase64(file, maxSize = 400, quality = 0.7) {
         canvas.height = height;
 
         const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#FFF9F2';
+        ctx.fillStyle = '#FFF8F0';
         ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Thử xuất image/webp trước
         let dataUrl = canvas.toDataURL('image/webp', quality);
         if (!dataUrl.startsWith('data:image/webp')) {
           dataUrl = canvas.toDataURL('image/jpeg', quality);
         }
 
-        // Nếu vẫn lớn hơn ~50KB (khoảng 68,000 ký tự base64), giảm nhẹ kích thước/chất lượng thêm 1 nấc
         if (dataUrl.length > 68000) {
           dataUrl = canvas.toDataURL('image/webp', 0.52);
           if (!dataUrl.startsWith('data:image/webp')) {
@@ -376,7 +419,7 @@ export function createInitialRoomState({
   return {
     roomId,
     createdAt: now,
-    coins: 120,
+    coins: 150,
     streak: 1,
     streakDate: todayStr,
     todayComboCounted: false,
@@ -392,20 +435,20 @@ export function createInitialRoomState({
     pet: {
       name: petName || 'Mochi',
       type: petType || 'cat',
-      hunger: 82,
-      mood: 86,
-      hygiene: 90,
+      hunger: 84,
+      mood: 88,
+      hygiene: 92,
       energy: 88,
       isSleeping: false,
       emotion: 'happy',
       lastCareBy: 'player1',
       lastUpdated: now,
       trashList: [
-        { id: 'trash_init_1', x: 26, y: 74, type: 'crumb' },
-        { id: 'trash_init_2', x: 72, y: 78, type: 'dust' }
+        { id: 'trash_init_1', x: 32, y: 76, type: 'crumb' },
+        { id: 'trash_init_2', x: 68, y: 81, type: 'dust' }
       ],
       aiBubble: {
-        dialogue: `Meow~ Chào mừng ${player1Name} về nhà chung! Mau rủ người kia vào nuôi ${petName || 'Mochi'} cùng nha! 💕`,
+        dialogue: `Meow~ Chào mừng ${player1Name} về nhà mới! Mau rủ người kia vào trang trí phòng cùng ${petName || 'Mochi'} nha!`,
         emotion: 'happy',
         modelUsed: 'khởi-tạo',
         updatedAt: now
@@ -417,14 +460,14 @@ export function createInitialRoomState({
     },
     stickyNote: {
       mode: 'text',
-      text: 'Chào mừng về Nhà Chung của tụi mình! Nhớ cho bé ăn đúng giờ nha 🐾💌',
+      text: 'Chào mừng về Nhà Chung của tụi mình! Nhớ cho bé ăn đúng giờ nha!',
       drawingData: '',
       author: player1Name || 'Chủ nhỏ 1',
       updatedAt: now
     },
     photoFrame: {
       imageData: '',
-      caption: 'Kỷ niệm tụi mình 💕',
+      caption: 'Kỷ niệm tụi mình',
       updatedBy: player1Name || 'Chủ nhỏ 1',
       updatedAt: now
     },

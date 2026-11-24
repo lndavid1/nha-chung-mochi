@@ -7,54 +7,37 @@ export default {
   theme: {
     extend: {
       colors: {
+        cozy: {
+          ink: '#4A3525',
+          sub: '#7D6352',
+          bg: '#FFF8F0',
+          card: '#FFFDF9',
+          peach: '#FF9B71',
+          peachDark: '#E87A4D',
+          matcha: '#88C9A1',
+          matchaDark: '#5EA87A',
+          butter: '#FFE082',
+          pink: '#FFB7C5',
+        },
         cream: {
           50: '#FFFDF9',
-          100: '#FFF9F2',
+          100: '#FFF8F0',
           200: '#FFF0DE',
           300: '#FFE2C2',
         },
         peach: {
-          400: '#FB923C',
+          400: '#FF9B71',
           500: '#F97316',
           600: '#EA580C',
         },
         mint: {
-          200: '#BBF7D0',
-          300: '#86EFAC',
-          500: '#22C55E',
+          200: '#CBEAD6',
+          300: '#88C9A1',
+          500: '#5EA87A',
         }
       },
       fontFamily: {
         sans: ['"Nunito"', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
-      },
-      animation: {
-        'float': 'float 3s ease-in-out infinite',
-        'breathe': 'breathe 2.6s ease-in-out infinite',
-        'wiggle': 'wiggle 1.2s ease-in-out infinite',
-        'bounce-soft': 'bounceSoft 2s infinite',
-        'twinkle': 'twinkle 2.5s ease-in-out infinite',
-      },
-      keyframes: {
-        float: {
-          '0%, 100%': { transform: 'translateY(0px)' },
-          '50%': { transform: 'translateY(-6px)' },
-        },
-        breathe: {
-          '0%, 100%': { transform: 'scale(1, 1) translateY(0px)' },
-          '50%': { transform: 'scale(1.03, 0.97) translateY(2px)' },
-        },
-        wiggle: {
-          '0%, 100%': { transform: 'rotate(-3deg)' },
-          '50%': { transform: 'rotate(3deg)' },
-        },
-        bounceSoft: {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-8px)' },
-        },
-        twinkle: {
-          '0%, 100%': { opacity: 0.3, transform: 'scale(0.9)' },
-          '50%': { opacity: 1, transform: 'scale(1.15)' },
-        }
       }
     },
   },

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Flame,
   Coins,
@@ -6,7 +7,7 @@ import {
   Utensils,
   Sparkles,
   MessageCircleHeart,
-  ShoppingBag,
+  Palette,
   BookOpen,
   Heart,
   Smile,
@@ -14,23 +15,28 @@ import {
   Moon,
   Sun,
   Share,
-  X
+  X,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import Onboarding from './components/Onboarding';
 import RoomStage from './components/RoomStage';
-import ShopModal from './components/Modals/ShopModal';
+import DecoratorDrawer from './components/DecoratorDrawer';
 import StickyNoteModal from './components/Modals/StickyNoteModal';
 import PhotoFrameModal from './components/Modals/PhotoFrameModal';
 import GiftUnwrapModal from './components/Modals/GiftUnwrapModal';
 import ChatModal from './components/Modals/ChatModal';
 import LogModal from './components/Modals/LogModal';
 import SettingsModal from './components/Modals/SettingsModal';
+import { FoodSvgIcon } from './components/furniture/FoodSvgIcons';
 
 import {
   FOOD_CATALOG,
   computeDecayedState,
   clampStat,
-  evaluateCoopCareBonus
+  evaluateCoopCareBonus,
+  normalizeEquippedRoom,
+  normalizeInventoryList
 } from './utils/gameLogic';
 import {
   subscribeToRoom,
@@ -45,6 +51,36 @@ import {
 
 const SESSION_STORAGE_KEY = 'mochi_active_session_v1';
 const IOS_BANNER_DISMISSED_KEY = 'mochi_ios_pwa_banner_dismissed_v1';
+const LAST_READ_STICKY_KEY = 'mochi_last_read_sticky_ts_v1';
+
+// Bộ đếm Xu nhảy số mượt mà (Animated Tabular Counter)
+function AnimatedCoinCounter({ value = 120 }) {
+  const [displayVal, setDisplayVal] = useState(value);
+
+  useEffect(() => {
+    const start = displayVal;
+    const end = Number(value) || 0;
+    if (start === end) return;
+
+    const diff = end - start;
+    const steps = 12;
+    let currentStep = 0;
+
+    const timer = setInterval(() => {
+      currentStep += 1;
+      if (currentStep >= steps) {
+        setDisplayVal(end);
+        clearInterval(timer);
+      } else {
+        setDisplayVal(Math.round(start + (diff * currentStep) / steps));
+      }
+    }, 24);
+
+    return () => clearInterval(timer);
+  }, [value]);
+
+  return <span className="tabular-nums">{displayVal}</span>;
+}
 
 export default function App() {
   const [session, setSession] = useState(() => {
@@ -58,20 +94,30 @@ export default function App() {
 
   const [roomData, setRoomData] = useState(null);
   const [activeTray, setActiveTray] = useState(null); // 'feed' | 'care' | null
-  const [activeModal, setActiveModal] = useState(null); // 'shop' | 'sticky' | 'photo' | 'gift' | 'chat' | 'log' | 'settings'
+  const [activeModal, setActiveModal] = useState(null); // 'sticky' | 'photo' | 'gift' | 'chat' | 'log' | 'settings'
+  const [isDecoratorMode, setIsDecoratorMode] = useState(false);
+  const [activeDecoratorSlot, setActiveDecoratorSlot] = useState('wall');
+  const [previewEquipped, setPreviewEquipped] = useState(null);
+  const [isPhotoMode, setIsPhotoMode] = useState(false);
+  const [timeOverride, setTimeOverride] = useState('auto');
   const [comboToast, setComboToast] = useState(null);
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [showIosBanner, setShowIosBanner] = useState(false);
+  const [lastReadStickyTs, setLastReadStickyTs] = useState(() =>
+    Number(localStorage.getItem(LAST_READ_STICKY_KEY) || 0)
+  );
 
   const welcomeBackCheckedRef = useRef(false);
 
-  // Phát hiện Safari iOS chưa chạy ở chế độ standalone để hiện banner hướng dẫn
+  // Phát hiện Safari iOS chưa chạy ở chế độ standalone
   useEffect(() => {
     const dismissed = localStorage.getItem(IOS_BANNER_DISMISSED_KEY);
     if (dismissed) return;
 
     const ua = window.navigator.userAgent || '';
-    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isIOS =
+      /iPad|iPhone|iPod/.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       window.navigator.standalone === true;
@@ -86,7 +132,6 @@ export default function App() {
     localStorage.setItem(IOS_BANNER_DISMISSED_KEY, '1');
   };
 
-  // Lưu định danh vào localStorage để lần sau mở app vào thẳng phòng
   const handleEnterRoom = (newSession) => {
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newSession));
     welcomeBackCheckedRef.current = false;
@@ -98,6 +143,7 @@ export default function App() {
     setSession(null);
     setRoomData(null);
     setActiveModal(null);
+    setIsDecoratorMode(false);
   };
 
   // Lắng nghe dữ liệu phòng & thiết lập Live Presence
@@ -121,18 +167,23 @@ export default function App() {
     };
   }, [session?.roomId, session?.playerRole]);
 
-  // Kiểm tra người kia đang online
   const partnerRole = session?.playerRole === 'player1' ? 'player2' : 'player1';
   const partnerInfo = roomData?.players?.[partnerRole] || null;
   const isPartnerOnline = Boolean(partnerInfo?.online);
   const bothOnline = Boolean(session && isPartnerOnline);
+
+  const hasUnreadSticky = Boolean(
+    roomData?.stickyNote?.updatedAt &&
+      roomData.stickyNote.updatedAt > lastReadStickyTs &&
+      roomData.stickyNote.author !== session?.playerName
+  );
 
   const showToast = (text) => {
     setComboToast(text);
     setTimeout(() => setComboToast(null), 3200);
   };
 
-  // Hàm gọi AI Pet Brain và đồng bộ bong bóng thoại lên Firebase để máy kia thấy chung
+  // Gọi AI Pet Brain và đồng bộ bong bóng thoại lên Firebase
   const triggerPetAiReaction = useCallback(
     async ({
       snapshotRoom,
@@ -169,9 +220,10 @@ export default function App() {
           'pet/emotion': aiResult.emotion
         };
 
-        // Nếu có dòng nhật ký đi kèm, gắn lời bình luận cà khịa của thú cưng vào
         if (logEntry) {
-          const currentLogs = Array.isArray(snapshotRoom.logs) ? [...snapshotRoom.logs] : [];
+          const currentLogs = Array.isArray(snapshotRoom.logs)
+            ? [...snapshotRoom.logs]
+            : [];
           const enrichedLog = {
             ...logEntry,
             petComment: aiResult.dialogue
@@ -179,7 +231,6 @@ export default function App() {
           updates.logs = [enrichedLog, ...currentLogs].slice(0, 20);
         }
 
-        // Kiểm tra cập nhật tóm tắt ký ức tối đa 1 lần / 24h
         const memUpdate = maybeBuildUpdatedMemorySummary(
           snapshotRoom,
           session.playerName,
@@ -214,7 +265,7 @@ export default function App() {
     }
   }, [roomData, session, triggerPetAiReaction]);
 
-  // 1. Thao tác Xoa đầu thú cưng
+  // 1. Xoa đầu thú cưng
   const handlePetTap = async () => {
     if (!roomData || !session) return;
     const now = Date.now();
@@ -235,12 +286,12 @@ export default function App() {
     });
   };
 
-  // 2. Thao tác Cho ăn
+  // 2. Cho ăn
   const handleFeedPet = async (food) => {
     if (!roomData || !session) return;
     const currentCoins = roomData.coins ?? 0;
     if (currentCoins < food.price) {
-      showToast('⚠️ Chưa đủ Xu chung rồi! Hãy chăm thú hoặc dọn phòng để nhận thêm Xu nhé.');
+      showToast('Chưa đủ Xu chung rồi! Hãy chăm thú hoặc dọn phòng để nhận thêm Xu nhé.');
       return;
     }
 
@@ -269,15 +320,15 @@ export default function App() {
     setActiveTray(null);
 
     if (bonus.isCoopCombo) {
-      showToast(`🔥 CO-OP COMBO x2 XU! (+${bonus.earnedCoins} Xu) • Streak ${bonus.nextStreak} ngày!`);
+      showToast(`CO-OP COMBO x2 XU! (+${bonus.earnedCoins} Xu) • Streak ${bonus.nextStreak} ngày!`);
     } else {
-      showToast(`🍽️ Đã thưởng ${food.name} (+${bonus.earnedCoins} Xu chăm sóc)`);
+      showToast(`Đã thưởng ${food.name} (+${bonus.earnedCoins} Xu chăm sóc)`);
     }
 
     const logEntry = {
       id: `log_feed_${now}`,
       actor: session.playerName,
-      action: `đã cho ${roomData.pet?.name || 'Mochi'} ăn ${food.name} ${food.icon}${
+      action: `đã cho ${roomData.pet?.name || 'Mochi'} ăn ${food.name}${
         bonus.isCoopCombo ? ' (Kích hoạt Co-op Combo x2 Xu!)' : ''
       }`,
       timestamp: now
@@ -302,7 +353,7 @@ export default function App() {
     });
   };
 
-  // 3. Thao tác Chăm sóc (Tắm rửa / Dọn phòng / Bật-tắt đèn ngủ)
+  // 3. Chăm sóc (Tắm rửa / Dọn phòng / Bật-tắt đèn ngủ)
   const handleCareAction = async (type) => {
     if (!roomData || !session) return;
     const now = Date.now();
@@ -320,30 +371,32 @@ export default function App() {
     if (type === 'bath') {
       updates['pet/hygiene'] = 100;
       updates['pet/mood'] = clampStat((roomData.pet?.mood ?? 80) + 10);
-      actionDesc = `đã tắm thơm phức bằng sữa tắm bọt hồng cho ${roomData.pet?.name || 'Mochi'} 🛁`;
+      actionDesc = `đã tắm bọt thơm phức cho ${roomData.pet?.name || 'Mochi'}`;
     } else if (type === 'clean_all') {
       const trashCount = (roomData.pet?.trashList || []).length;
       const extraTrashCoins = trashCount * 5;
       updates.coins += extraTrashCoins;
       updates['pet/trashList'] = [];
       updates['pet/hygiene'] = clampStat((roomData.pet?.hygiene ?? 80) + 15);
-      actionDesc = `đã quét dọn sạch bóng căn phòng (+${bonus.earnedCoins + extraTrashCoins} Xu) 🧹`;
+      actionDesc = `đã quét dọn sạch bóng căn phòng (+${bonus.earnedCoins + extraTrashCoins} Xu)`;
     } else if (type === 'toggle_sleep') {
       const nextSleep = !roomData.pet?.isSleeping;
       updates['pet/isSleeping'] = nextSleep;
-      updates['pet/energy'] = clampStat((roomData.pet?.energy ?? 80) + (nextSleep ? 12 : 0));
+      updates['pet/energy'] = clampStat(
+        (roomData.pet?.energy ?? 80) + (nextSleep ? 12 : 0)
+      );
       actionDesc = nextSleep
-        ? `đã tắt đèn đắp chăn cho ${roomData.pet?.name || 'Mochi'} đi ngủ 🌙`
-        : `đã bật đèn đánh thức ${roomData.pet?.name || 'Mochi'} dậy chơi ☀️`;
+        ? `đã tắt đèn đắp chăn cho ${roomData.pet?.name || 'Mochi'} đi ngủ`
+        : `đã bật đèn đánh thức ${roomData.pet?.name || 'Mochi'} dậy chơi`;
     }
 
     await updateRoomFields(session.roomId, updates);
     setActiveTray(null);
 
     if (bonus.isCoopCombo) {
-      showToast(`🔥 CO-OP COMBO x2! (+${bonus.earnedCoins} Xu) • Phối hợp ăn ý quá!`);
+      showToast(`CO-OP COMBO x2! (+${bonus.earnedCoins} Xu) • Phối hợp ăn ý quá!`);
     } else {
-      showToast(`✨ Chăm sóc hoàn tất (+${bonus.earnedCoins} Xu)`);
+      showToast(`Chăm sóc hoàn tất (+${bonus.earnedCoins} Xu)`);
     }
 
     const logEntry = {
@@ -368,7 +421,7 @@ export default function App() {
     });
   };
 
-  // 4. Chạm trực tiếp vào cục rác/bụi trên sàn (+5 Xu/cục)
+  // 4. Dọn 1 cục rác/bụi trên sàn (+5 Xu)
   const handleCleanSingleTrash = async (trashId) => {
     if (!roomData || !session) return;
     const currentList = Array.isArray(roomData.pet?.trashList)
@@ -383,10 +436,9 @@ export default function App() {
       'pet/trashList': nextList,
       'pet/hygiene': nextHygiene
     });
-    showToast('🧹 Dọn sạch 1 cục bụi trên sàn (+5 Xu)!');
   };
 
-  // 5. Nút tương tác đôi khi cả 2 cùng Online: Cùng chơi tung bóng (+20 Xu chung)
+  // 5. Chơi tung bóng đôi Co-op (+20 Xu)
   const handleCoopPlayBall = async () => {
     if (!roomData || !session) return;
     const now = Date.now();
@@ -400,12 +452,12 @@ export default function App() {
       'pet/lastUpdated': now
     });
 
-    showToast('🎾 Cả hai cùng chơi tung bóng với bé! (+20 Xu chung)');
+    showToast('Cả hai cùng chơi tung bóng với bé! (+20 Xu chung)');
 
     const logEntry = {
       id: `log_ball_${now}`,
       actor: `${session.playerName} & ${partnerInfo?.name || 'Chủ 2'}`,
-      action: `cùng online chơi tung bóng đôi với ${roomData.pet?.name || 'Mochi'} (+20 Xu)! 🎾`,
+      action: `cùng online chơi tung bóng đôi với ${roomData.pet?.name || 'Mochi'} (+20 Xu)!`,
       timestamp: now
     };
 
@@ -421,21 +473,34 @@ export default function App() {
     });
   };
 
-  // 6. Mua và lắp đồ nội thất
+  // 6. Xem thử trực tiếp (Live Preview), Mua & Lắp đồ nội thất trong DecoratorDrawer
+  const handlePreviewItem = (item) => {
+    setPreviewEquipped((prev) => ({
+      ...(prev || {}),
+      [item.slot]: item.id
+    }));
+  };
+
   const handleBuyAndEquip = async (item) => {
     if (!roomData || !session) return;
     if ((roomData.coins ?? 0) < item.price) return;
 
     const now = Date.now();
     const nextCoins = (roomData.coins ?? 0) - item.price;
-    const inventory = Array.from(new Set([...(roomData.room?.inventory || []), item.id]));
-    const equipped = { ...(roomData.room?.equipped || {}), [item.slot]: item.id };
+    const inventory = normalizeInventoryList([
+      ...(roomData.room?.inventory || []),
+      item.id
+    ]);
+    const equipped = {
+      ...normalizeEquippedRoom(roomData.room?.equipped),
+      [item.slot]: item.id
+    };
 
     const logEntry = {
       id: `log_shop_${now}`,
       actor: session.playerName,
-      action: `vừa sắm "${item.name}" trang hoàng phòng mới! 🛋️`,
-      petComment: `Oa, ${item.name} hợp với màu lông của con ghê!`,
+      action: `vừa sắm "${item.name}" trang hoàng phòng mới!`,
+      petComment: `Oa, ${item.name} hợp với tổ ấm của mình ghê!`,
       timestamp: now
     };
 
@@ -446,7 +511,8 @@ export default function App() {
       logs: [logEntry, ...(roomData.logs || [])].slice(0, 20)
     });
 
-    showToast(`🏠 Đã mua và lắp "${item.name}" vào phòng!`);
+    setPreviewEquipped(null);
+    showToast(`Đã mua và lắp "${item.name}" vào phòng!`);
   };
 
   const handleEquipExisting = async (item) => {
@@ -454,7 +520,8 @@ export default function App() {
     await updateRoomFields(session.roomId, {
       [`room/equipped/${item.slot}`]: item.id
     });
-    showToast(`✨ Đã đổi sang "${item.name}"`);
+    setPreviewEquipped(null);
+    showToast(`Đã lắp "${item.name}"`);
   };
 
   // 7. Gói làm hộp quà bất ngờ (Mystery Gift)
@@ -478,7 +545,7 @@ export default function App() {
     const logEntry = {
       id: `log_gift_${now}`,
       actor: session.playerName,
-      action: `đã đặt một Hộp Quà Bất Ngờ giữa phòng cho người kia! 🎁`,
+      action: `đã đặt một Hộp Quà Bất Ngờ giữa phòng cho người kia!`,
       petComment: 'Suỵt! Con biết trong hộp có gì nhưng không bật mí đâu~',
       timestamp: now
     };
@@ -488,19 +555,26 @@ export default function App() {
       mysteryGift: giftPayload,
       logs: [logEntry, ...(roomData.logs || [])].slice(0, 20)
     });
+    showToast('Đã đặt Hộp Quà Bất Ngờ giữa phòng cho người kia bóc!');
   };
 
   // 8. Bóc hộp quà bất ngờ
   const handleConfirmUnwrapGift = async (gift) => {
     if (!roomData || !session) return;
     const now = Date.now();
-    const inventory = Array.from(new Set([...(roomData.room?.inventory || []), gift.itemId]));
-    const equipped = { ...(roomData.room?.equipped || {}), [gift.slot]: gift.itemId };
+    const inventory = normalizeInventoryList([
+      ...(roomData.room?.inventory || []),
+      gift.itemId
+    ]);
+    const equipped = {
+      ...normalizeEquippedRoom(roomData.room?.equipped),
+      [gift.slot]: gift.itemId
+    };
 
     const logEntry = {
       id: `log_unwrap_${now}`,
       actor: session.playerName,
-      action: `đã bóc hộp quà "${gift.itemName}" từ ${gift.senderName}! 🎉`,
+      action: `đã bóc hộp quà "${gift.itemName}" từ ${gift.senderName}!`,
       timestamp: now
     };
 
@@ -521,7 +595,14 @@ export default function App() {
     });
   };
 
-  // 9. Lưu Giấy nhớ tủ lạnh
+  // 9. Mở & Lưu Giấy nhớ bảng bần
+  const handleOpenStickyModal = () => {
+    const now = Date.now();
+    setLastReadStickyTs(now);
+    localStorage.setItem(LAST_READ_STICKY_KEY, String(now));
+    setActiveModal('sticky');
+  };
+
   const handleSaveStickyNote = async (notePayload) => {
     if (!roomData || !session) return;
     const now = Date.now();
@@ -532,15 +613,17 @@ export default function App() {
     };
 
     await updateRoomFields(session.roomId, { stickyNote });
-    showToast('💌 Đã dán giấy nhớ mới lên tường!');
+    setLastReadStickyTs(now);
+    localStorage.setItem(LAST_READ_STICKY_KEY, String(now));
+    showToast('Đã ghim giấy nhớ mới lên bảng bần!');
 
     const logEntry = {
       id: `log_note_${now}`,
       actor: session.playerName,
       action:
         notePayload.mode === 'drawing'
-          ? 'đã vẽ một bức tranh Doodle mới lên giấy nhớ! 🎨'
-          : `đã dán giấy nhớ mới: "${notePayload.text.slice(0, 40)}" 📝`,
+          ? 'đã vẽ một bức tranh Doodle mới lên bảng bần!'
+          : `đã ghim giấy nhớ mới: "${notePayload.text.slice(0, 40)}"`,
       timestamp: now
     };
 
@@ -552,14 +635,14 @@ export default function App() {
     });
   };
 
-  // 10. Lưu ảnh khung tranh WebP Base64
+  // 10. Lưu ảnh khung tranh Polaroid
   const handleSavePhotoFrame = async (photoPayload) => {
     if (!roomData || !session) return;
     const now = Date.now();
     const logEntry = {
       id: `log_photo_${now}`,
       actor: session.playerName,
-      action: `vừa treo ảnh mới lên khung tranh: "${photoPayload.caption}" 🖼️`,
+      action: `vừa treo ảnh Polaroid mới: "${photoPayload.caption}"`,
       petComment: 'Hai chủ chụp ảnh đẹp đôi quá chừng, cho con chụp ké với!',
       timestamp: now
     };
@@ -568,17 +651,17 @@ export default function App() {
       photoFrame: photoPayload,
       logs: [logEntry, ...(roomData.logs || [])].slice(0, 20)
     });
-    showToast('🖼️ Đã cập nhật ảnh kỷ niệm trên tường!');
+    showToast('Đã cập nhật ảnh Polaroid trên tường!');
   };
 
-  // 11. Chat trực tiếp với bộ não AI của Pet
+  // 11. Chat với bộ não AI của Pet
   const handleSendChatToPet = async (userMessage) => {
     if (!roomData || !session) return;
     const now = Date.now();
     const logEntry = {
       id: `log_chat_${now}`,
       actor: session.playerName,
-      action: `tâm sự với ${roomData.pet?.name || 'Mochi'}: "${userMessage}" 💬`,
+      action: `tâm sự với ${roomData.pet?.name || 'Mochi'}: "${userMessage}"`,
       timestamp: now
     };
 
@@ -597,7 +680,7 @@ export default function App() {
     await updateRoomFields(session.roomId, {
       'pet/name': newName
     });
-    showToast(`🐾 Đã đổi tên bé thành "${newName}"!`);
+    showToast(`Đã đổi tên bé thành "${newName}"!`);
   };
 
   const handleSyncEncryptedKey = async (encodedKey) => {
@@ -620,12 +703,11 @@ export default function App() {
     });
     showToast(
       nextOnline
-        ? '🟢 Người kia đang ở nhà cùng bạn! Đã mở khóa "Cùng chơi tung bóng"!'
-        : '⚪ Người kia đã tạm rời phòng.'
+        ? 'Người kia đang ở nhà cùng bạn! Đã mở khóa "Cùng chơi tung bóng"!'
+        : 'Người kia đã tạm rời phòng.'
     );
   };
 
-  // Nếu chưa có session phòng -> hiển thị màn hình Onboarding
   if (!session) {
     return <Onboarding onEnterRoom={handleEnterRoom} />;
   }
@@ -645,336 +727,420 @@ export default function App() {
       label: 'Đói',
       value: pet.hunger ?? 80,
       icon: Utensils,
-      barColor: (pet.hunger ?? 80) < 25 ? 'bg-rose-500' : 'bg-orange-400'
+      barColor: (pet.hunger ?? 80) < 30 ? 'bg-[#E85D75]' : 'bg-[#FF9B71]'
     },
     {
       id: 'mood',
       label: 'Vui',
       value: pet.mood ?? 85,
       icon: Smile,
-      barColor: (pet.mood ?? 85) < 25 ? 'bg-rose-500' : 'bg-pink-400'
+      barColor: (pet.mood ?? 85) < 30 ? 'bg-[#E85D75]' : 'bg-[#FFB7C5]'
     },
     {
       id: 'hygiene',
       label: 'Sạch',
       value: pet.hygiene ?? 90,
       icon: Bath,
-      barColor: (pet.hygiene ?? 90) < 25 ? 'bg-rose-500' : 'bg-emerald-400'
+      barColor: (pet.hygiene ?? 90) < 30 ? 'bg-[#E85D75]' : 'bg-[#88C9A1]'
     },
     {
       id: 'energy',
       label: 'Ngủ',
       value: pet.energy ?? 85,
       icon: Moon,
-      barColor: (pet.energy ?? 85) < 25 ? 'bg-rose-500' : 'bg-sky-400'
+      barColor: (pet.energy ?? 85) < 30 ? 'bg-[#E85D75]' : 'bg-[#FFE082]'
     }
   ];
 
   return (
-    <div className="app-shell w-full max-w-md mx-auto flex flex-col justify-between px-3 select-none overflow-hidden relative">
-      {/* Banner hướng dẫn PWA trên iOS Safari nếu chưa chạy standalone */}
-      {showIosBanner && (
-        <div className="mb-1.5 px-3 py-1.5 rounded-2xl bg-amber-900 text-amber-50 text-[11px] font-bold flex items-center justify-between gap-2 shadow-md shrink-0">
-          <div className="flex items-center gap-1.5">
-            <Share className="w-3.5 h-3.5 text-orange-300 shrink-0" />
-            <span>
-              Bấm <strong>Chia sẻ</strong> → <strong>Thêm vào MH chính</strong> để chơi toàn màn hình như app!
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={dismissIosBanner}
-            className="p-0.5 rounded-full bg-white/15"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* 1. HEADER GỌN TRÊN CÙNG */}
-      <header className="bg-white/90 backdrop-blur-md rounded-3xl px-3.5 py-2 border-2 border-orange-200/80 shadow-sm flex items-center justify-between gap-2 shrink-0">
-        {/* Tên thú & Trạng thái Co-op Online của người kia */}
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="relative">
-            <div className="w-9 h-9 rounded-2xl bg-orange-100 border border-orange-300 flex items-center justify-center text-lg">
-              {pet.type === 'corgi' ? '🐶' : pet.type === 'bunny' ? '🐰' : '🐱'}
-            </div>
-            <span
-              className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
-                isPartnerOnline ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'
-              }`}
-              title={isPartnerOnline ? 'Người kia đang Online' : 'Người kia đang Offline'}
-            />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <h1 className="text-sm font-black text-amber-950 truncate">
-                {pet.name || 'Mochi'}
-              </h1>
-              <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                {session.roomId}
-              </span>
-            </div>
-            <div className="text-[10px] font-bold text-amber-800/85 truncate flex items-center gap-1">
-              {bothOnline ? (
-                <span className="text-emerald-600 font-extrabold flex items-center gap-0.5">
-                  <Heart className="w-2.5 h-2.5 fill-emerald-500" />
-                  Đang ở nhà cùng {partnerInfo?.name || 'người kia'}
-                </span>
-              ) : partnerInfo?.name ? (
-                <span>Nhà của {session.playerName} & {partnerInfo.name}</span>
-              ) : (
-                <span>Chờ người thứ 2 vào mã {session.roomId}</span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Streak lửa + Tổng Xu + Nút Cài đặt */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <div
-            className="flex items-center gap-1 px-2.5 py-1 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-black"
-            title="Chuỗi ngày Co-op Streak"
-          >
-            <Flame className="w-3.5 h-3.5 fill-rose-500" />
-            <span>{roomData?.streak ?? 1}</span>
-          </div>
-
-          <div
-            className="flex items-center gap-1 px-2.5 py-1 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-black"
-            title="Ngân quỹ Xu chung của 2 người"
-          >
-            <Coins className="w-3.5 h-3.5 text-amber-500" />
-            <span>{roomData?.coins ?? 120}</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setActiveModal('settings')}
-            className="p-2 rounded-2xl bg-amber-100/80 hover:bg-orange-100 text-amber-900 active:scale-95 transition-transform"
-            title="Cài đặt phòng & Bộ não AI"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-        </div>
-      </header>
-
-      {/* Thông báo nổi (Co-op Combo / Thưởng Xu) */}
-      {comboToast && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 w-[90%] max-w-xs bg-amber-950/95 text-white text-xs font-extrabold px-3.5 py-2 rounded-2xl shadow-xl text-center animate-bounce">
-          {comboToast}
-        </div>
-      )}
-
-      {/* 2. SÂN KHẤU CĂN PHÒNG 2D (Chiếm ~63% chiều cao) */}
-      <main className="my-2 flex-1 min-h-0 relative">
+    <div className="relative w-full max-w-md mx-auto h-[100dvh] overflow-hidden select-none bg-[#FFF8F0]">
+      {/* 1. FULL-BLEED 2.5D ROOM CANVAS (Chiếm trọn 100% khung hình 100dvh) */}
+      <div
+        className={`w-full transition-all duration-300 ${
+          isDecoratorMode ? 'h-[66dvh]' : 'h-[100dvh]'
+        }`}
+      >
         <RoomStage
           roomData={roomData}
+          previewEquipped={previewEquipped}
+          isDecoratorMode={isDecoratorMode}
+          activeDecoratorSlot={activeDecoratorSlot}
+          onSelectDecoratorSlot={(slotId) => setActiveDecoratorSlot(slotId)}
+          timeOverride={timeOverride}
           bothOnline={bothOnline}
-          currentPlayerRole={session.playerRole}
           onPetTap={handlePetTap}
           onCoopPlayBall={handleCoopPlayBall}
           onCleanTrash={handleCleanSingleTrash}
-          onOpenStickyNote={() => setActiveModal('sticky')}
+          onOpenStickyNote={handleOpenStickyModal}
           onOpenPhotoFrame={() => setActiveModal('photo')}
           onOpenGift={() => setActiveModal('gift')}
+          onOpenChat={() => setActiveModal('chat')}
+          hasUnreadSticky={hasUnreadSticky}
         />
+      </div>
 
-        {/* Khay trượt nhanh: Cho Ăn hoặc Chăm Sóc */}
-        {activeTray === 'feed' && (
-          <div className="absolute inset-x-2 bottom-2 z-40 bg-white/95 backdrop-blur-md rounded-3xl p-3 border-2 border-orange-300 shadow-xl">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-black text-amber-950">
-                🍽️ Chọn món ngon cho {pet.name || 'Mochi'} (Đổi người chăm = Combo x2 Xu)
+      {/* 2. FLOATING TOP BAR (Kính mờ iOS Frosted Glass, tôn trọng safe-area-inset-top) */}
+      <div
+        style={{
+          top: 'max(env(safe-area-inset-top, 10px), 10px)'
+        }}
+        className="fixed inset-x-0 z-35 max-w-md mx-auto px-3 pointer-events-none flex flex-col gap-1.5"
+      >
+        {/* Banner hướng dẫn cài PWA trên Safari iOS */}
+        {showIosBanner && !isPhotoMode && (
+          <div className="pointer-events-auto px-3 py-1.5 rounded-2xl bg-[#4A3525] text-[#FFF8F0] text-[11px] font-bold flex items-center justify-between gap-2 shadow-md">
+            <div className="flex items-center gap-1.5">
+              <Share className="w-3.5 h-3.5 text-[#FFE082] shrink-0" />
+              <span>
+                Bấm <strong>Chia sẻ</strong> → <strong>Thêm vào MH chính</strong> để chơi toàn màn hình!
               </span>
-              <button
-                type="button"
-                onClick={() => setActiveTray(null)}
-                className="text-xs font-bold text-amber-700"
-              >
-                Đóng
-              </button>
             </div>
-            <div className="grid grid-cols-4 gap-2">
-              {FOOD_CATALOG.map((food) => (
-                <button
-                  key={food.id}
-                  type="button"
-                  onClick={() => handleFeedPet(food)}
-                  className="p-2 rounded-2xl bg-amber-50 hover:bg-orange-50 border border-amber-200 flex flex-col items-center text-center active:scale-95 transition-transform"
-                >
-                  <span className="text-2xl">{food.icon}</span>
-                  <span className="text-[11px] font-black text-amber-950 mt-1 leading-tight">
-                    {food.name}
-                  </span>
-                  <span className="text-[10px] font-extrabold text-orange-600 mt-0.5">
-                    {food.price === 0 ? 'Miễn phí' : `${food.price} Xu`}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTray === 'care' && (
-          <div className="absolute inset-x-2 bottom-2 z-40 bg-white/95 backdrop-blur-md rounded-3xl p-3 border-2 border-emerald-300 shadow-xl">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-black text-amber-950">
-                🛁 Chăm sóc & Dọn dẹp Nhà Chung
-              </span>
-              <button
-                type="button"
-                onClick={() => setActiveTray(null)}
-                className="text-xs font-bold text-amber-700"
-              >
-                Đóng
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => handleCareAction('bath')}
-                className="p-2.5 rounded-2xl bg-sky-50 border border-sky-200 flex flex-col items-center active:scale-95"
-              >
-                <Bath className="w-5 h-5 text-sky-600 mb-1" />
-                <span className="text-xs font-black text-amber-950">Tắm Thơm</span>
-                <span className="text-[10px] font-bold text-sky-700">Sạch 100%</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleCareAction('clean_all')}
-                className="p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col items-center active:scale-95"
-              >
-                <Sparkles className="w-5 h-5 text-emerald-600 mb-1" />
-                <span className="text-xs font-black text-amber-950">Dọn Phòng</span>
-                <span className="text-[10px] font-bold text-emerald-700">Quét sạch bụi</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleCareAction('toggle_sleep')}
-                className="p-2.5 rounded-2xl bg-indigo-50 border border-indigo-200 flex flex-col items-center active:scale-95"
-              >
-                {pet.isSleeping ? (
-                  <Sun className="w-5 h-5 text-amber-500 mb-1" />
-                ) : (
-                  <Moon className="w-5 h-5 text-indigo-600 mb-1" />
-                )}
-                <span className="text-xs font-black text-amber-950">
-                  {pet.isSleeping ? 'Bật Đèn Dậy' : 'Tắt Đèn Ngủ'}
-                </span>
-                <span className="text-[10px] font-bold text-indigo-700">
-                  +15 Năng lượng/h
-                </span>
-              </button>
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* 3. THANH 4 CHỈ SỐ MINI NGAY DƯỚI PHÒNG */}
-      <section className="grid grid-cols-4 gap-2 mb-2 shrink-0">
-        {statItems.map((st) => {
-          const IconComp = st.icon;
-          return (
-            <div
-              key={st.id}
-              className="bg-white/90 rounded-2xl px-2.5 py-1.5 border border-orange-200/80 shadow-sm"
+            <button
+              type="button"
+              onClick={dismissIosBanner}
+              className="p-0.5 rounded-full bg-white/15"
             >
-              <div className="flex items-center justify-between text-[11px] font-extrabold text-amber-950 mb-1">
-                <span className="flex items-center gap-1">
-                  <IconComp className="w-3 h-3 text-orange-500" />
-                  {st.label}
-                </span>
-                <span>{st.value}%</span>
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-2">
+          {/* Trái: Viên thuốc Tên thú + Streak lửa + Bộ đếm Xu nhảy số */}
+          {!isPhotoMode ? (
+            <div className="pointer-events-auto cozy-glass rounded-full px-3 py-1.5 border-[2px] border-[#4A3525] flex items-center gap-2.5 shadow-sm">
+              <span className="text-xs font-black text-[#4A3525] truncate max-w-[82px]">
+                {pet.name || 'Mochi'}
+              </span>
+
+              <div className="h-3.5 w-[1.5px] bg-[#4A3525]/20" />
+
+              <div
+                className="flex items-center gap-0.5 text-xs font-black text-[#E85D75] tabular-nums"
+                title="Chuỗi ngày Co-op Streak"
+              >
+                <Flame className="w-3.5 h-3.5 fill-[#FF9B71]" />
+                <span>{roomData?.streak ?? 1}</span>
               </div>
-              <div className="w-full h-2 rounded-full bg-amber-100 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${st.barColor}`}
-                  style={{ width: `${st.value}%` }}
-                />
+
+              <div className="h-3.5 w-[1.5px] bg-[#4A3525]/20" />
+
+              <div
+                className="flex items-center gap-1 text-xs font-black text-[#4A3525]"
+                title="Ngân quỹ Xu chung"
+              >
+                <Coins className="w-3.5 h-3.5 text-[#E87A4D]" />
+                <AnimatedCoinCounter value={roomData?.coins ?? 120} />
               </div>
             </div>
-          );
-        })}
-      </section>
+          ) : (
+            <div />
+          )}
 
-      {/* 4. BOTTOM ACTION DOCK (5 NÚT THAO TÁC LỚN DỄ BẤM BẰNG NGÓN CÁI) */}
-      <nav className="bg-white/95 backdrop-blur-md rounded-3xl p-1.5 border-2 border-orange-200 shadow-lg grid grid-cols-5 gap-1.5 shrink-0">
-        <button
-          type="button"
-          onClick={() => setActiveTray(activeTray === 'feed' ? null : 'feed')}
-          className={`py-2 rounded-2xl flex flex-col items-center justify-center gap-0.5 active:scale-95 transition-all ${
-            activeTray === 'feed'
-              ? 'bg-orange-400 text-white shadow-sm'
-              : 'text-amber-950 hover:bg-orange-50'
-          }`}
-        >
-          <Utensils className="w-5 h-5" />
-          <span className="text-[11px] font-extrabold">Cho ăn</span>
-        </button>
+          {/* Phải: Viên thuốc Partner Presence + Nút Con mắt (Photo Mode) + Nút Cài đặt */}
+          <div className="pointer-events-auto flex items-center gap-1.5">
+            {!isPhotoMode && (
+              <div className="cozy-glass rounded-full px-2.5 py-1.5 border-[2px] border-[#4A3525] flex items-center gap-1.5">
+                <span
+                  className={`w-2.5 h-2.5 rounded-full border border-[#4A3525] ${
+                    isPartnerOnline ? 'bg-[#88C9A1] animate-pulse' : 'bg-[#D6C7B8]'
+                  }`}
+                />
+                <span className="text-[10.5px] font-black text-[#4A3525] truncate max-w-[96px]">
+                  {bothOnline
+                    ? 'Đang ở nhà'
+                    : partnerInfo?.name
+                    ? partnerInfo.name
+                    : session.roomId}
+                </span>
+              </div>
+            )}
 
-        <button
-          type="button"
-          onClick={() => setActiveTray(activeTray === 'care' ? null : 'care')}
-          className={`py-2 rounded-2xl flex flex-col items-center justify-center gap-0.5 active:scale-95 transition-all ${
-            activeTray === 'care'
-              ? 'bg-emerald-500 text-white shadow-sm'
-              : 'text-amber-950 hover:bg-emerald-50'
-          }`}
-        >
-          <Sparkles className="w-5 h-5" />
-          <span className="text-[11px] font-extrabold">Chăm sóc</span>
-        </button>
+            {/* Nút Con mắt (Photo Mode) để ẩn toàn bộ HUD ngắm phòng / chụp ảnh màn hình */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsPhotoMode((prev) => !prev);
+                setActiveTray(null);
+                if (isDecoratorMode) {
+                  setIsDecoratorMode(false);
+                  setPreviewEquipped(null);
+                }
+              }}
+              className="cozy-glass w-9 h-9 rounded-full border-[2px] border-[#4A3525] flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
+              title={isPhotoMode ? 'Hiện lại giao diện' : 'Ẩn HUD để ngắm phòng / chụp ảnh'}
+            >
+              {isPhotoMode ? (
+                <EyeOff className="w-4 h-4" />
+              ) : (
+                <Eye className="w-4 h-4" />
+              )}
+            </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTray(null);
-            setActiveModal('chat');
+            {!isPhotoMode && (
+              <button
+                type="button"
+                onClick={() => setActiveModal('settings')}
+                className="cozy-glass w-9 h-9 rounded-full border-[2px] border-[#4A3525] flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
+                title="Cài đặt phòng & Bộ não AI"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Thông báo nổi (Co-op Combo / Thưởng Xu) */}
+      <AnimatePresence>
+        {comboToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -12, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12 }}
+            className="fixed top-16 left-1/2 -translate-x-1/2 z-45 w-[88%] max-w-xs cozy-glass-dark text-[#FFF8F0] text-xs font-extrabold px-4 py-2 rounded-2xl text-center"
+          >
+            {comboToast}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 3. CỤM HUD PHÍA DƯỚI: KHAY TRƯỢT NHANH + 4 VIÊN THUỐC CHỈ SỐ + TACTILE BOTTOM DOCK */}
+      {!isPhotoMode && !isDecoratorMode && (
+        <div
+          style={{
+            bottom: 'max(env(safe-area-inset-bottom, 10px), 10px)'
           }}
-          className="py-2 rounded-2xl flex flex-col items-center justify-center gap-0.5 bg-gradient-to-b from-orange-400 to-rose-400 text-white shadow-md active:scale-95 transition-transform"
+          className="fixed inset-x-0 z-35 max-w-md mx-auto px-3 pointer-events-none flex flex-col gap-2"
         >
-          <MessageCircleHeart className="w-5 h-5" />
-          <span className="text-[11px] font-black">Trò chuyện</span>
-        </button>
+          {/* Khay trượt nhanh: Cho Ăn (Sử dụng SVG thật FoodSvgIcon) */}
+          <AnimatePresence>
+            {activeTray === 'feed' && (
+              <motion.div
+                initial={{ opacity: 0, y: 16, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 16, scale: 0.96 }}
+                className="pointer-events-auto cozy-glass rounded-[26px] p-3 border-[2.2px] border-[#4A3525]"
+              >
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <span className="text-xs font-black text-[#4A3525]">
+                    Bữa ngon cho {pet.name || 'Mochi'} (Đổi phiên chăm = Combo x2 Xu)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTray(null)}
+                    className="text-xs font-black text-[#7D6352]"
+                  >
+                    Đóng
+                  </button>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {FOOD_CATALOG.map((food) => (
+                    <button
+                      key={food.id}
+                      type="button"
+                      onClick={() => handleFeedPet(food)}
+                      className="tactile-btn p-2 rounded-2xl bg-[#FFFDF9] border-[1.8px] border-[#4A3525] flex flex-col items-center text-center"
+                    >
+                      <FoodSvgIcon foodId={food.id} className="w-10 h-10" />
+                      <span className="text-[10.5px] font-black text-[#4A3525] mt-1 leading-tight line-clamp-1">
+                        {food.name}
+                      </span>
+                      <span className="text-[10px] font-extrabold text-[#E87A4D] mt-0.5 tabular-nums">
+                        {food.price === 0 ? 'Miễn phí' : `${food.price} Xu`}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
 
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTray(null);
-            setActiveModal('shop');
-          }}
-          className="py-2 rounded-2xl flex flex-col items-center justify-center gap-0.5 text-amber-950 hover:bg-orange-50 active:scale-95 transition-all"
-        >
-          <ShoppingBag className="w-5 h-5 text-orange-500" />
-          <span className="text-[11px] font-extrabold">Cửa hàng</span>
-        </button>
+            {/* Khay trượt nhanh: Chăm Sóc */}
+            {activeTray === 'care' && (
+              <motion.div
+                initial={{ opacity: 0, y: 16, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 16, scale: 0.96 }}
+                className="pointer-events-auto cozy-glass rounded-[26px] p-3 border-[2.2px] border-[#4A3525]"
+              >
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <span className="text-xs font-black text-[#4A3525]">
+                    Chăm sóc & Dọn dẹp Tổ Ấm
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTray(null)}
+                    className="text-xs font-black text-[#7D6352]"
+                  >
+                    Đóng
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleCareAction('bath')}
+                    className="tactile-btn p-2.5 rounded-2xl bg-[#FFFDF9] border-[1.8px] border-[#4A3525] flex flex-col items-center"
+                  >
+                    <Bath className="w-5 h-5 text-[#4A3525] mb-1" />
+                    <span className="text-xs font-black text-[#4A3525]">Tắm Thơm</span>
+                    <span className="text-[10px] font-bold text-[#7D6352]">Sạch 100%</span>
+                  </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTray(null);
-            setActiveModal('log');
-          }}
-          className="py-2 rounded-2xl flex flex-col items-center justify-center gap-0.5 text-amber-950 hover:bg-orange-50 active:scale-95 transition-all"
-        >
-          <BookOpen className="w-5 h-5 text-orange-500" />
-          <span className="text-[11px] font-extrabold">Nhật ký</span>
-        </button>
-      </nav>
+                  <button
+                    type="button"
+                    onClick={() => handleCareAction('clean_all')}
+                    className="tactile-btn p-2.5 rounded-2xl bg-[#FFFDF9] border-[1.8px] border-[#4A3525] flex flex-col items-center"
+                  >
+                    <Sparkles className="w-5 h-5 text-[#5EA87A] mb-1" />
+                    <span className="text-xs font-black text-[#4A3525]">Dọn Phòng</span>
+                    <span className="text-[10px] font-bold text-[#7D6352]">Quét sạch bụi</span>
+                  </button>
 
-      {/* HỆ THỐNG MODALS */}
-      <ShopModal
-        isOpen={activeModal === 'shop'}
-        onClose={() => setActiveModal(null)}
+                  <button
+                    type="button"
+                    onClick={() => handleCareAction('toggle_sleep')}
+                    className="tactile-btn p-2.5 rounded-2xl bg-[#FFFDF9] border-[1.8px] border-[#4A3525] flex flex-col items-center"
+                  >
+                    {pet.isSleeping ? (
+                      <Sun className="w-5 h-5 text-[#E87A4D] mb-1" />
+                    ) : (
+                      <Moon className="w-5 h-5 text-[#4A3525] mb-1" />
+                    )}
+                    <span className="text-xs font-black text-[#4A3525]">
+                      {pet.isSleeping ? 'Bật Đèn Dậy' : 'Tắt Đèn Ngủ'}
+                    </span>
+                    <span className="text-[10px] font-bold text-[#7D6352]">
+                      +15 Năng lượng/h
+                    </span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* THANH 4 CHỈ SỐ TINH GỌN (4 viên thuốc mini ngang xếp sát trên Dock) */}
+          <div className="pointer-events-auto grid grid-cols-4 gap-1.5">
+            {statItems.map((st) => {
+              const IconComp = st.icon;
+              const isLow = st.value < 30;
+              return (
+                <div
+                  key={st.id}
+                  className={`cozy-glass rounded-2xl px-2.5 py-1.5 border-[1.8px] transition-all ${
+                    isLow
+                      ? 'border-[#E85D75] bg-[#FFF0F3]/90 animate-bounce'
+                      : 'border-[#4A3525]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-[10.5px] font-black text-[#4A3525] mb-1">
+                    <span className="flex items-center gap-1">
+                      <IconComp className="w-3 h-3 text-[#4A3525]" />
+                      {st.label}
+                    </span>
+                    <span className="tabular-nums">{st.value}%</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-[#4A3525]/15 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${st.barColor}`}
+                      style={{ width: `${st.value}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* TACTILE BOTTOM DOCK (5 nút thao tác lớn có độ nổi cơ học mềm) */}
+          <nav className="pointer-events-auto cozy-glass rounded-[28px] p-1.5 border-[2.4px] border-[#4A3525] grid grid-cols-5 gap-1.5">
+            <button
+              type="button"
+              onClick={() =>
+                setActiveTray(activeTray === 'feed' ? null : 'feed')
+              }
+              className={`tactile-btn py-2 rounded-[20px] border-[1.8px] border-[#4A3525] flex flex-col items-center justify-center gap-0.5 ${
+                activeTray === 'feed'
+                  ? 'bg-[#FFE082] text-[#4A3525]'
+                  : 'bg-[#FFFDF9] text-[#4A3525]'
+              }`}
+            >
+              <Utensils className="w-4.5 h-4.5" />
+              <span className="text-[10.5px] font-black">Cho ăn</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setActiveTray(activeTray === 'care' ? null : 'care')
+              }
+              className={`tactile-btn py-2 rounded-[20px] border-[1.8px] border-[#4A3525] flex flex-col items-center justify-center gap-0.5 ${
+                activeTray === 'care'
+                  ? 'bg-[#88C9A1] text-[#4A3525]'
+                  : 'bg-[#FFFDF9] text-[#4A3525]'
+              }`}
+            >
+              <Sparkles className="w-4.5 h-4.5" />
+              <span className="text-[10.5px] font-black">Chăm sóc</span>
+            </button>
+
+            {/* Nút mở CHẾ ĐỘ TRANG TRÍ PHÒNG TRỰC QUAN (LIVE DECORATOR STUDIO) */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTray(null);
+                setPreviewEquipped(null);
+                setIsDecoratorMode(true);
+              }}
+              className="tactile-btn py-2 rounded-[20px] border-[1.8px] border-[#4A3525] bg-[#FF9B71] text-[#4A3525] flex flex-col items-center justify-center gap-0.5"
+            >
+              <Palette className="w-4.5 h-4.5" />
+              <span className="text-[10.5px] font-black">Trang trí</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTray(null);
+                setActiveModal('chat');
+              }}
+              className="tactile-btn py-2 rounded-[20px] border-[1.8px] border-[#4A3525] bg-[#FFB7C5] text-[#4A3525] flex flex-col items-center justify-center gap-0.5"
+            >
+              <MessageCircleHeart className="w-4.5 h-4.5" />
+              <span className="text-[10.5px] font-black">Trò chuyện</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTray(null);
+                setActiveModal('log');
+              }}
+              className="tactile-btn py-2 rounded-[20px] border-[1.8px] border-[#4A3525] bg-[#FFFDF9] text-[#4A3525] flex flex-col items-center justify-center gap-0.5"
+            >
+              <BookOpen className="w-4.5 h-4.5" />
+              <span className="text-[10.5px] font-black">Nhật ký</span>
+            </button>
+          </nav>
+        </div>
+      )}
+
+      {/* 4. CHẾ ĐỘ TRANG TRÍ PHÒNG TRỰC QUAN (LIVE DECORATOR STUDIO DRAWER) */}
+      <DecoratorDrawer
+        isOpen={isDecoratorMode}
+        onClose={() => {
+          setIsDecoratorMode(false);
+          setPreviewEquipped(null);
+        }}
         roomData={roomData}
+        activeSlot={activeDecoratorSlot}
+        onSelectSlot={(slotId) => setActiveDecoratorSlot(slotId)}
+        previewEquipped={previewEquipped}
+        onPreviewItem={handlePreviewItem}
         onBuyAndEquip={handleBuyAndEquip}
         onEquipItem={handleEquipExisting}
         onSendMysteryGift={handleSendMysteryGift}
       />
 
+      {/* 5. HỆ THỐNG iOS NATIVE BOTTOM SHEETS */}
       <StickyNoteModal
         isOpen={activeModal === 'sticky'}
         onClose={() => setActiveModal(null)}
@@ -1018,6 +1184,8 @@ export default function App() {
         onClose={() => setActiveModal(null)}
         roomData={roomData}
         session={session}
+        timeOverride={timeOverride}
+        onChangeTimeOverride={(val) => setTimeOverride(val)}
         onRenamePet={handleRenamePet}
         onSyncEncryptedKey={handleSyncEncryptedKey}
         onToggleDemoCoopPartner={handleToggleDemoCoopPartner}

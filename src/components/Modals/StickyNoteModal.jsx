@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, StickyNote, Type, PenTool, Eraser, Check } from 'lucide-react';
+import { StickyNote, Type, PenTool, Eraser, Check } from 'lucide-react';
+import BottomSheet from '../BottomSheet';
 
 export default function StickyNoteModal({
   isOpen,
@@ -10,7 +11,7 @@ export default function StickyNoteModal({
 }) {
   const [mode, setMode] = useState('text'); // 'text' | 'drawing'
   const [text, setText] = useState('');
-  const [brushColor, setBrushColor] = useState('#78350F');
+  const [brushColor, setBrushColor] = useState('#4A3525');
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
@@ -21,12 +22,11 @@ export default function StickyNoteModal({
     }
   }, [isOpen, stickyNote]);
 
-  // Khởi tạo nền giấy vàng trên Canvas khi mở tab vẽ tay
   useEffect(() => {
     if (isOpen && mode === 'drawing' && canvasRef.current) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#FEF9C3';
+      ctx.fillStyle = '#FFF7C2';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       if (stickyNote?.drawingData) {
@@ -38,8 +38,6 @@ export default function StickyNoteModal({
       }
     }
   }, [isOpen, mode, stickyNote]);
-
-  if (!isOpen) return null;
 
   const getPointerPos = (e) => {
     const canvas = canvasRef.current;
@@ -82,7 +80,7 @@ export default function StickyNoteModal({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#FEF9C3';
+    ctx.fillStyle = '#FFF7C2';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   };
 
@@ -94,13 +92,13 @@ export default function StickyNoteModal({
       }
       onSaveStickyNote({
         mode: 'drawing',
-        text: '[Tranh vẽ tay trên giấy nhớ]',
+        text: '[Tranh vẽ tay trên bảng bần]',
         drawingData: dataUrl
       });
     } else {
       onSaveStickyNote({
         mode: 'text',
-        text: text.trim() || 'Chúc đằng ấy một ngày thật vui vẻ nha! 💕',
+        text: text.trim() || 'Chúc đằng ấy một ngày thật vui vẻ nha!',
         drawingData: ''
       });
     }
@@ -115,36 +113,27 @@ export default function StickyNoteModal({
     : '';
 
   return (
-    <div className="fixed inset-0 z-50 bg-amber-950/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-[#FEF08A] rounded-3xl border-4 border-amber-400 shadow-2xl p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <StickyNote className="w-5 h-5 text-amber-900" />
-            <div>
-              <h2 className="text-base font-black text-amber-950">Giấy Nhớ Tủ Lạnh</h2>
-              {stickyNote?.author && (
-                <p className="text-[11px] font-bold text-amber-800">
-                  Dán bởi {stickyNote.author} lúc {updatedTime}
-                </p>
-              )}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-full bg-amber-200/80 text-amber-950"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Nút chọn Chế độ Viết chữ / Vẽ tay */}
-        <div className="grid grid-cols-2 gap-2 bg-amber-200/70 p-1 rounded-2xl">
+    <BottomSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Bảng Bần & Giấy Nhớ"
+      subtitle={
+        stickyNote?.author
+          ? `Ghim bởi ${stickyNote.author} lúc ${updatedTime}`
+          : 'Gửi lời nhắn hoặc bức vẽ tay cho người kia'
+      }
+      icon={StickyNote}
+    >
+      <div className="space-y-3.5">
+        {/* Nút chuyển Chế độ Viết chữ / Vẽ tay */}
+        <div className="grid grid-cols-2 gap-2 bg-[#FFF0DE] p-1.5 rounded-2xl border-[1.8px] border-[#4A3525]">
           <button
             type="button"
             onClick={() => setMode('text')}
-            className={`py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 ${
-              mode === 'text' ? 'bg-amber-900 text-white shadow' : 'text-amber-950'
+            className={`py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+              mode === 'text'
+                ? 'bg-[#FFE082] text-[#4A3525] border-[1.6px] border-[#4A3525] shadow-sm'
+                : 'text-[#7D6352]'
             }`}
           >
             <Type className="w-3.5 h-3.5" />
@@ -153,8 +142,10 @@ export default function StickyNoteModal({
           <button
             type="button"
             onClick={() => setMode('drawing')}
-            className={`py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 ${
-              mode === 'drawing' ? 'bg-amber-900 text-white shadow' : 'text-amber-950'
+            className={`py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+              mode === 'drawing'
+                ? 'bg-[#FFE082] text-[#4A3525] border-[1.6px] border-[#4A3525] shadow-sm'
+                : 'text-[#7D6352]'
             }`}
           >
             <PenTool className="w-3.5 h-3.5" />
@@ -170,24 +161,24 @@ export default function StickyNoteModal({
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Viết lời nhắn dễ thương cho người kia (tối đa 120 ký tự)..."
-              className="w-full p-3 rounded-2xl bg-[#FEF9C3] border-2 border-amber-400 text-sm font-bold text-amber-950 focus:outline-none"
+              className="w-full p-3.5 rounded-2xl bg-[#FFF7C2] border-2 border-[#4A3525] text-sm font-extrabold text-[#4A3525] focus:outline-none shadow-inner"
             />
-            <div className="text-right text-[11px] font-bold text-amber-800 mt-1">
+            <div className="text-right text-[11px] font-bold text-[#7D6352] mt-1 tabular-nums">
               {text.length}/120 ký tự
             </div>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                {['#78350F', '#EF4444', '#EC4899', '#2563EB', '#16A34A'].map((c) => (
+              <div className="flex items-center gap-2">
+                {['#4A3525', '#E85D75', '#FF9B71', '#5EA87A', '#4A90E2'].map((c) => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setBrushColor(c)}
                     style={{ backgroundColor: c }}
-                    className={`w-6 h-6 rounded-full border-2 ${
-                      brushColor === c ? 'border-white scale-110 shadow' : 'border-transparent'
+                    className={`w-7 h-7 rounded-full border-2 border-[#4A3525] transition-transform ${
+                      brushColor === c ? 'scale-115 ring-2 ring-[#FFE082]' : ''
                     }`}
                   />
                 ))}
@@ -195,18 +186,18 @@ export default function StickyNoteModal({
               <button
                 type="button"
                 onClick={handleClearCanvas}
-                className="px-2.5 py-1 rounded-xl bg-amber-200 text-amber-950 text-xs font-extrabold flex items-center gap-1"
+                className="px-3 py-1 rounded-xl bg-[#FFFDF9] border-[1.8px] border-[#4A3525] text-[#4A3525] text-xs font-black flex items-center gap-1"
               >
                 <Eraser className="w-3.5 h-3.5" />
-                <span>Xóa trắng</span>
+                <span>Xóa giấy</span>
               </button>
             </div>
 
-            <div className="rounded-2xl overflow-hidden border-2 border-amber-500 shadow-inner bg-[#FEF9C3] touch-none">
+            <div className="rounded-2xl overflow-hidden border-2 border-[#4A3525] shadow-inner bg-[#FFF7C2] touch-none">
               <canvas
                 ref={canvasRef}
-                width={260}
-                height={180}
+                width={280}
+                height={185}
                 onMouseDown={startDrawing}
                 onMouseMove={drawMove}
                 onMouseUp={stopDrawing}
@@ -223,12 +214,12 @@ export default function StickyNoteModal({
         <button
           type="button"
           onClick={handleSave}
-          className="w-full py-2.5 rounded-2xl bg-amber-900 text-white text-xs font-black shadow-md active:scale-95 flex items-center justify-center gap-1.5"
+          className="tactile-btn w-full py-3 rounded-2xl bg-[#FF9B71] border-2 border-[#4A3525] text-[#4A3525] text-xs font-black flex items-center justify-center gap-1.5"
         >
           <Check className="w-4 h-4" />
-          <span>Dán Lên Tường Phòng ({currentPlayerName})</span>
+          <span>Ghim Lên Bảng Bần ({currentPlayerName})</span>
         </button>
       </div>
-    </div>
+    </BottomSheet>
   );
 }

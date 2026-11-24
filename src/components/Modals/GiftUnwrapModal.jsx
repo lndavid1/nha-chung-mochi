@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { X, Gift, Sparkles, Lock } from 'lucide-react';
+import { Gift, Sparkles, Lock } from 'lucide-react';
 import { getFurnitureById } from '../../utils/gameLogic';
+import BottomSheet from '../BottomSheet';
+import { RealItemSvgPreview } from '../DecoratorDrawer';
 
 export default function GiftUnwrapModal({
   isOpen,
@@ -12,7 +14,13 @@ export default function GiftUnwrapModal({
 }) {
   const [unwrapped, setUnwrapped] = useState(false);
 
-  if (!isOpen || !mysteryGift) return null;
+  useEffect(() => {
+    if (!isOpen) {
+      setUnwrapped(false);
+    }
+  }, [isOpen]);
+
+  if (!mysteryGift) return null;
 
   const isSender = mysteryGift.senderRole === currentPlayerRole;
   const itemInfo = getFurnitureById(mysteryGift.itemId);
@@ -26,81 +34,77 @@ export default function GiftUnwrapModal({
         origin: { y: 0.6 }
       });
     } catch {
-      // ignore if canvas-confetti fails
+      // ignore
     }
     onConfirmUnwrap(mysteryGift);
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-amber-950/55 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-[#FFF9F2] rounded-3xl border-4 border-rose-300 shadow-2xl p-5 text-center space-y-3">
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              setUnwrapped(false);
-              onClose();
-            }}
-            className="p-1.5 rounded-full bg-rose-100 text-rose-900"
-          >
-            <X className="w-4 h-4" />
-          </button>
+    <BottomSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`Hộp Quà Từ ${mysteryGift.senderName}`}
+      subtitle="Món quà bất ngờ đặt giữa phòng chung"
+      icon={Gift}
+    >
+      <div className="text-center space-y-3.5 py-1">
+        <div className="mx-auto w-24 h-24 rounded-3xl bg-[#FFFDF9] border-[2.5px] border-[#4A3525] flex items-center justify-center shadow-sm overflow-hidden">
+          {unwrapped || isSender ? (
+            <RealItemSvgPreview item={itemInfo} />
+          ) : (
+            <div className="w-full h-full bg-[#FF9B71] flex items-center justify-center">
+              <Gift className="w-11 h-11 text-[#FFFDF9]" />
+            </div>
+          )}
         </div>
-
-        <div className="mx-auto w-20 h-20 rounded-3xl bg-gradient-to-br from-rose-400 to-pink-500 text-white flex items-center justify-center shadow-lg">
-          <Gift className="w-10 h-10" />
-        </div>
-
-        <h2 className="text-lg font-black text-amber-950">
-          Hộp Quà Bất Ngờ từ {mysteryGift.senderName}!
-        </h2>
 
         {isSender && !unwrapped ? (
-          <div className="p-3.5 rounded-2xl bg-amber-100/80 border border-amber-300 space-y-2">
-            <div className="inline-flex items-center gap-1 text-xs font-black text-amber-900">
-              <Lock className="w-3.5 h-3.5 text-orange-600" />
-              <span>Hộp quà dành riêng cho người kia!</span>
+          <div className="p-4 rounded-2xl bg-[#FFF0DE] border-2 border-[#4A3525] space-y-2">
+            <div className="inline-flex items-center gap-1.5 text-xs font-black text-[#4A3525]">
+              <Lock className="w-3.5 h-3.5 text-[#E87A4D]" />
+              <span>Dành riêng cho người kia bóc!</span>
             </div>
-            <p className="text-xs font-semibold text-amber-800 leading-relaxed">
-              Bạn đã gói món đồ <strong>{itemInfo?.name || mysteryGift.itemName}</strong> kèm lời nhắn:
+            <p className="text-xs font-bold text-[#7D6352] leading-relaxed">
+              Bạn đã gói món đồ{' '}
+              <strong className="text-[#4A3525]">
+                {itemInfo?.name || mysteryGift.itemName}
+              </strong>{' '}
+              kèm lời nhắn:
               <br />
-              <em>"{mysteryGift.message}"</em>
-            </p>
-            <p className="text-[11px] font-bold text-orange-600">
-              Hãy nhắc người kia vào phòng bấm mở hộp quà nha!
+              <em className="text-[#4A3525]">"{mysteryGift.message}"</em>
             </p>
           </div>
         ) : !unwrapped ? (
           <div className="space-y-3">
-            <p className="text-xs font-bold text-amber-800">
-              {mysteryGift.senderName} đã để lại một hộp quà bí mật giữa phòng cho riêng bạn!
+            <p className="text-xs font-bold text-[#7D6352]">
+              {mysteryGift.senderName} đã chuẩn bị một hộp quà bí mật giữa phòng cho riêng bạn!
             </p>
             <button
               type="button"
               onClick={handleUnwrapClick}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-orange-400 text-white font-black text-sm shadow-lg active:scale-95 flex items-center justify-center gap-2"
+              className="tactile-btn w-full py-3 rounded-2xl bg-[#FF9B71] border-2 border-[#4A3525] text-[#4A3525] font-black text-sm flex items-center justify-center gap-2"
             >
               <Sparkles className="w-4 h-4" />
-              <span>Bóc Hộp Quà Ngay! 🎉</span>
+              <span>Mở Hộp Quà Bất Ngờ Ngay!</span>
             </button>
           </div>
         ) : (
-          <div className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 space-y-2">
-            <div className="text-xs font-black text-rose-700 uppercase">
-              🎊 Chúc mừng bạn nhận được 🎊
+          <div className="p-4 rounded-2xl bg-[#FFF3D6] border-2 border-[#4A3525] space-y-2">
+            <div className="text-xs font-black text-[#E87A4D] uppercase">
+              Món quà đã được mở
             </div>
-            <div className="text-base font-black text-amber-950">
+            <div className="text-base font-black text-[#4A3525]">
               {itemInfo?.name || mysteryGift.itemName}
             </div>
-            <p className="text-xs font-bold text-amber-900 italic bg-white/80 p-2.5 rounded-xl border border-rose-200">
-              "💌 {mysteryGift.message}"
+            <p className="text-xs font-bold text-[#4A3525] italic bg-[#FFFDF9] p-3 rounded-xl border border-[#4A3525]">
+              "{mysteryGift.message}"
             </p>
-            <p className="text-[11px] font-extrabold text-emerald-700">
-              ✅ Đã tự động trang bị vào phòng và cất vào Kho đồ chung!
+            <p className="text-[11px] font-black text-[#5EA87A]">
+              Đã tự động lắp vào phòng và cất vào Kho đồ chung!
             </p>
           </div>
         )}
       </div>
-    </div>
+    </BottomSheet>
   );
 }

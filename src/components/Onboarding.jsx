@@ -8,6 +8,7 @@ import {
   saveFirebaseConfigToLocal,
   getConnectionMode
 } from '../services/firebase';
+import PetAvatar from './pet/PetAvatar';
 
 export default function Onboarding({ onEnterRoom }) {
   const [activeTab, setActiveTab] = useState('create'); // 'create' | 'join' | 'firebase'
@@ -20,14 +21,12 @@ export default function Onboarding({ onEnterRoom }) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Firebase config form
   const resolvedFb = getResolvedFirebaseConfig();
   const [fbApiKey, setFbApiKey] = useState(resolvedFb.config?.apiKey || '');
   const [fbDbUrl, setFbDbUrl] = useState(resolvedFb.config?.databaseURL || '');
   const [fbProjectId, setFbProjectId] = useState(resolvedFb.config?.projectId || '');
   const [fbSavedToast, setFbSavedToast] = useState('');
 
-  // Tự động điền mã phòng nếu mở từ link ?room=MOCHI-88
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const roomParam = params.get('room');
@@ -112,7 +111,7 @@ export default function Onboarding({ onEnterRoom }) {
     e.preventDefault();
     if (!fbApiKey.trim() || !fbDbUrl.trim()) {
       saveFirebaseConfigToLocal(null);
-      setFbSavedToast('Đã chuyển về chế độ Chơi thử nghiệm trên thiết bị (Local Demo)!');
+      setFbSavedToast('Đã khôi phục kết nối Firebase mặc định!');
       setTimeout(() => setFbSavedToast(''), 3000);
       return;
     }
@@ -128,35 +127,41 @@ export default function Onboarding({ onEnterRoom }) {
   const mode = getConnectionMode();
 
   return (
-    <div className="app-shell w-full max-w-md mx-auto flex flex-col justify-between px-4 py-3 overflow-y-auto custom-scroll">
-      {/* Header thương hiệu */}
-      <div className="text-center pt-1 pb-2">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-extrabold mb-1.5 shadow-sm">
+    <div
+      style={{
+        paddingTop: 'max(env(safe-area-inset-top, 12px), 12px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 12px), 12px)'
+      }}
+      className="h-[100dvh] w-full max-w-md mx-auto flex flex-col justify-between px-4 overflow-y-auto custom-scroll bg-[#FFF8F0]"
+    >
+      {/* Header thương hiệu phong cách Storybook */}
+      <div className="text-center pt-1">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFE082] border-[1.8px] border-[#4A3525] text-[#4A3525] text-xs font-black mb-1.5 shadow-sm">
           <Sparkles className="w-3.5 h-3.5" />
           <span>Co-op Pet & Shared Room cho 2 người</span>
         </div>
-        <h1 className="text-2xl font-black text-amber-950 tracking-tight">
-          🐾 Nhà Chung Mochi
+        <h1 className="text-2xl font-black text-[#4A3525] tracking-tight">
+          Nhà Chung Mochi
         </h1>
-        <p className="text-xs font-semibold text-amber-800/80 mt-0.5">
-          Cùng nuôi thú cưng, trang trí căn phòng ấm cúng & nhắn gửi yêu thương
+        <p className="text-xs font-bold text-[#7D6352] mt-0.5">
+          Cùng nuôi thú cưng, trang trí tổ ấm 2.5D & nhắn gửi yêu thương
         </p>
       </div>
 
       {/* Khung thẻ chính */}
-      <div className="bg-white/95 backdrop-blur rounded-3xl p-4 shadow-xl border-2 border-orange-200/80 my-auto">
+      <div className="bg-[#FFFDF9] rounded-[30px] p-4 shadow-[0_12px_30px_rgba(74,53,37,0.12)] border-[2.5px] border-[#4A3525] my-auto">
         {/* Tabs chuyển đổi */}
-        <div className="grid grid-cols-3 gap-1.5 bg-amber-50/90 p-1.5 rounded-2xl mb-4 border border-amber-200/60">
+        <div className="grid grid-cols-3 gap-1.5 bg-[#FFF0DE] p-1.5 rounded-2xl mb-3.5 border-[1.8px] border-[#4A3525]">
           <button
             type="button"
             onClick={() => {
               setActiveTab('create');
               setErrorMsg('');
             }}
-            className={`flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-extrabold transition-all ${
+            className={`flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-black transition-all ${
               activeTab === 'create'
-                ? 'bg-orange-400 text-white shadow-sm'
-                : 'text-amber-900 hover:bg-amber-100/60'
+                ? 'bg-[#FF9B71] text-[#4A3525] border-[1.6px] border-[#4A3525] shadow-sm'
+                : 'text-[#7D6352]'
             }`}
           >
             <Home className="w-3.5 h-3.5" />
@@ -168,10 +173,10 @@ export default function Onboarding({ onEnterRoom }) {
               setActiveTab('join');
               setErrorMsg('');
             }}
-            className={`flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-extrabold transition-all ${
+            className={`flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-black transition-all ${
               activeTab === 'join'
-                ? 'bg-orange-400 text-white shadow-sm'
-                : 'text-amber-900 hover:bg-amber-100/60'
+                ? 'bg-[#FF9B71] text-[#4A3525] border-[1.6px] border-[#4A3525] shadow-sm'
+                : 'text-[#7D6352]'
             }`}
           >
             <Users className="w-3.5 h-3.5" />
@@ -183,10 +188,10 @@ export default function Onboarding({ onEnterRoom }) {
               setActiveTab('firebase');
               setErrorMsg('');
             }}
-            className={`flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-extrabold transition-all ${
+            className={`flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-black transition-all ${
               activeTab === 'firebase'
-                ? 'bg-orange-400 text-white shadow-sm'
-                : 'text-amber-900 hover:bg-amber-100/60'
+                ? 'bg-[#FF9B71] text-[#4A3525] border-[1.6px] border-[#4A3525] shadow-sm'
+                : 'text-[#7D6352]'
             }`}
           >
             <Database className="w-3.5 h-3.5" />
@@ -195,55 +200,63 @@ export default function Onboarding({ onEnterRoom }) {
         </div>
 
         {errorMsg && (
-          <div className="mb-3 px-3 py-2 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
-            ⚠️ {errorMsg}
+          <div className="mb-3 px-3 py-2 rounded-2xl bg-[#FFB7C5] border-[1.8px] border-[#4A3525] text-[#4A3525] text-xs font-extrabold">
+            {errorMsg}
           </div>
         )}
 
         {/* TAB 1: TẠO NHÀ MỚI */}
         {activeTab === 'create' && (
           <form onSubmit={handleCreateRoom} className="space-y-3">
-            {/* Mã phòng & nút copy link mời */}
-            <div className="bg-amber-50/90 rounded-2xl p-3 border border-amber-200/80 flex items-center justify-between">
-              <div>
-                <span className="text-[11px] font-bold text-amber-800 block">
+            {/* Sân khấu nhỏ xem trước trực tiếp thú cưng đang chọn */}
+            <div className="relative h-28 rounded-2xl bg-[#FFF3E2] border-2 border-[#4A3525] flex items-center justify-between px-4 overflow-hidden">
+              <div className="z-10">
+                <span className="text-[10.5px] font-extrabold text-[#7D6352] block">
                   Mã Phòng Nhà Chung:
                 </span>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-lg font-black text-orange-600 tracking-wider">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-black text-[#4A3525] tracking-wider tabular-nums">
                     {roomCode}
                   </span>
                   <button
                     type="button"
                     onClick={() => setRoomCode(generateRoomCode())}
-                    className="text-[11px] font-bold text-amber-700 underline"
+                    className="text-[10.5px] font-black text-[#E87A4D] underline"
                   >
                     Đổi mã
                   </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={handleCopyInviteLink}
+                  className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[#FFFDF9] border-[1.6px] border-[#4A3525] text-[#4A3525] text-[10.5px] font-black shadow-sm active:scale-95"
+                >
+                  {copiedLink ? (
+                    <>
+                      <Check className="w-3 h-3 text-[#5EA87A]" />
+                      <span>Đã chép link</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3 text-[#E87A4D]" />
+                      <span>Copy link mời</span>
+                    </>
+                  )}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleCopyInviteLink}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-amber-300 text-amber-900 text-xs font-extrabold shadow-sm active:scale-95"
-              >
-                {copiedLink ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    <span className="text-emerald-700">Đã chép link</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5 text-orange-500" />
-                    <span>Copy link mời</span>
-                  </>
-                )}
-              </button>
+
+              <div className="scale-75 -mr-4">
+                <PetAvatar
+                  type={petType}
+                  emotion="happy"
+                  accessoryId="acc_sprout"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <label className="block text-xs font-extrabold text-amber-900 mb-1">
+                <label className="block text-xs font-black text-[#4A3525] mb-1">
                   Tên của bạn (Chủ 1)
                 </label>
                 <input
@@ -252,11 +265,11 @@ export default function Onboarding({ onEnterRoom }) {
                   value={playerName}
                   onChange={(e) => setPlayerName(e.target.value)}
                   placeholder="VD: Minh Anh"
-                  className="w-full px-3 py-2 rounded-xl border-2 border-amber-200 bg-amber-50/40 text-sm font-bold text-amber-950 focus:outline-none focus:border-orange-400"
+                  className="w-full px-3 py-2 rounded-xl border-2 border-[#4A3525] bg-[#FFF8F0] text-sm font-extrabold text-[#4A3525] focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-extrabold text-amber-900 mb-1">
+                <label className="block text-xs font-black text-[#4A3525] mb-1">
                   Đặt tên thú cưng
                 </label>
                 <input
@@ -265,14 +278,14 @@ export default function Onboarding({ onEnterRoom }) {
                   value={petName}
                   onChange={(e) => setPetName(e.target.value)}
                   placeholder="VD: Mochi"
-                  className="w-full px-3 py-2 rounded-xl border-2 border-amber-200 bg-amber-50/40 text-sm font-bold text-amber-950 focus:outline-none focus:border-orange-400"
+                  className="w-full px-3 py-2 rounded-xl border-2 border-[#4A3525] bg-[#FFF8F0] text-sm font-extrabold text-[#4A3525] focus:outline-none"
                 />
               </div>
             </div>
 
-            {/* Chọn loại thú cưng */}
+            {/* Chọn 3 loài thú cưng */}
             <div>
-              <label className="block text-xs font-extrabold text-amber-900 mb-1.5">
+              <label className="block text-xs font-black text-[#4A3525] mb-1.5">
                 Chọn bé thú cưng nuôi chung:
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -283,19 +296,19 @@ export default function Onboarding({ onEnterRoom }) {
                       key={pt.id}
                       type="button"
                       onClick={() => handleSelectPetType(pt)}
-                      className={`p-2.5 rounded-2xl border-2 text-left transition-all active:scale-95 ${
+                      className={`p-2.5 rounded-2xl border-2 border-[#4A3525] text-left transition-all active:scale-95 ${
                         selected
-                          ? 'border-orange-400 bg-orange-50/90 shadow-sm'
-                          : 'border-amber-200/70 bg-white hover:bg-amber-50/40'
+                          ? 'bg-[#FFE082] shadow-sm -translate-y-0.5'
+                          : 'bg-[#FFF8F0]'
                       }`}
                     >
-                      <div className="text-xs font-black text-amber-950">
+                      <div className="text-xs font-black text-[#4A3525]">
                         {pt.name}
                       </div>
-                      <div className="text-[10px] font-bold text-orange-600 mt-0.5">
+                      <div className="text-[10px] font-extrabold text-[#E87A4D] mt-0.5">
                         {pt.badge}
                       </div>
-                      <p className="text-[10px] text-amber-800/80 mt-1 line-clamp-2 leading-tight">
+                      <p className="text-[9.5px] font-semibold text-[#7D6352] mt-1 line-clamp-2 leading-tight">
                         {pt.desc}
                       </p>
                     </button>
@@ -307,9 +320,11 @@ export default function Onboarding({ onEnterRoom }) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-400 to-rose-400 text-white font-black text-sm shadow-md active:scale-95 transition-transform flex items-center justify-center gap-2"
+              className="tactile-btn w-full py-3 rounded-2xl bg-[#FF9B71] border-2 border-[#4A3525] text-[#4A3525] font-black text-sm flex items-center justify-center gap-2"
             >
-              <span>{loading ? 'Đang dựng nhà...' : 'Khai Trương Nhà Chung Ngay'}</span>
+              <span>
+                {loading ? 'Đang dựng tổ ấm...' : 'Khai Trương Nhà Chung Ngay'}
+              </span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
@@ -319,7 +334,7 @@ export default function Onboarding({ onEnterRoom }) {
         {activeTab === 'join' && (
           <form onSubmit={handleJoinRoom} className="space-y-3.5">
             <div>
-              <label className="block text-xs font-extrabold text-amber-900 mb-1">
+              <label className="block text-xs font-black text-[#4A3525] mb-1">
                 Nhập mã phòng người kia gửi cho bạn:
               </label>
               <input
@@ -328,12 +343,12 @@ export default function Onboarding({ onEnterRoom }) {
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                 placeholder="VD: MOCHI-88"
-                className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-amber-300 bg-amber-50/50 text-base font-black tracking-wider text-orange-600 uppercase focus:outline-none focus:border-orange-400"
+                className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-[#4A3525] bg-[#FFF8F0] text-base font-black tracking-wider text-[#4A3525] uppercase focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-extrabold text-amber-900 mb-1">
+              <label className="block text-xs font-black text-[#4A3525] mb-1">
                 Tên của bạn (Chủ 2 hoặc tên cũ để vào lại):
               </label>
               <input
@@ -342,14 +357,14 @@ export default function Onboarding({ onEnterRoom }) {
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
                 placeholder="VD: Hoàng Nam"
-                className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-amber-200 bg-amber-50/40 text-sm font-bold text-amber-950 focus:outline-none focus:border-orange-400"
+                className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-[#4A3525] bg-[#FFF8F0] text-sm font-extrabold text-[#4A3525] focus:outline-none"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black text-sm shadow-md active:scale-95 transition-transform flex items-center justify-center gap-2"
+              className="tactile-btn w-full py-3 rounded-2xl bg-[#88C9A1] border-2 border-[#4A3525] text-[#4A3525] font-black text-sm flex items-center justify-center gap-2"
             >
               <span>{loading ? 'Đang kết nối...' : 'Dọn Vào Nhà Chung'}</span>
               <ArrowRight className="w-4 h-4" />
@@ -360,18 +375,17 @@ export default function Onboarding({ onEnterRoom }) {
         {/* TAB 3: CẤU HÌNH FIREBASE REALTIME DB */}
         {activeTab === 'firebase' && (
           <form onSubmit={handleSaveFirebaseConfig} className="space-y-2.5">
-            <div className="p-2.5 rounded-2xl bg-amber-50 border border-amber-200 text-[11px] font-semibold text-amber-900 leading-relaxed">
-              Trạng thái hiện tại:{' '}
-              <span className="font-black text-orange-600">
+            <div className="p-2.5 rounded-2xl bg-[#FFF3D6] border-[1.8px] border-[#4A3525] text-[11px] font-bold text-[#4A3525] leading-relaxed">
+              Trạng thái:{' '}
+              <span className="font-black text-[#5EA87A]">
                 {mode === 'firebase'
-                  ? '🟢 Đang kết nối Firebase Realtime DB (Chơi 2 máy Online)'
-                  : '🟡 Chế độ Local Demo (Chơi ngay không cần cài đặt)'}
+                  ? 'Đang kết nối Firebase Cloud (Chơi 2 máy Online)'
+                  : 'Chế độ Local Demo'}
               </span>
-              . Bạn có thể dán Firebase Config miễn phí vào dưới đây để đồng bộ 2 điện thoại ở xa nhau!
             </div>
 
             <div>
-              <label className="block text-[11px] font-extrabold text-amber-900 mb-0.5">
+              <label className="block text-[11px] font-black text-[#4A3525] mb-0.5">
                 Firebase API Key
               </label>
               <input
@@ -379,45 +393,45 @@ export default function Onboarding({ onEnterRoom }) {
                 value={fbApiKey}
                 onChange={(e) => setFbApiKey(e.target.value)}
                 placeholder="AIzaSy..."
-                className="w-full px-3 py-1.5 rounded-xl border border-amber-300 text-xs font-mono"
+                className="w-full px-3 py-1.5 rounded-xl border-[1.8px] border-[#4A3525] bg-[#FFF8F0] text-xs font-mono"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-extrabold text-amber-900 mb-0.5">
-                Realtime Database URL (Bắt buộc)
+              <label className="block text-[11px] font-black text-[#4A3525] mb-0.5">
+                Realtime Database URL
               </label>
               <input
                 type="text"
                 value={fbDbUrl}
                 onChange={(e) => setFbDbUrl(e.target.value)}
-                placeholder="https://ten-project-default-rtdb.asia-southeast1.firebasedatabase.app"
-                className="w-full px-3 py-1.5 rounded-xl border border-amber-300 text-xs font-mono"
+                placeholder="https://...-default-rtdb.asia-southeast1.firebasedatabase.app"
+                className="w-full px-3 py-1.5 rounded-xl border-[1.8px] border-[#4A3525] bg-[#FFF8F0] text-xs font-mono"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-extrabold text-amber-900 mb-0.5">
-                Project ID (Tùy chọn)
+              <label className="block text-[11px] font-black text-[#4A3525] mb-0.5">
+                Project ID
               </label>
               <input
                 type="text"
                 value={fbProjectId}
                 onChange={(e) => setFbProjectId(e.target.value)}
-                placeholder="nha-chung-mochi"
-                className="w-full px-3 py-1.5 rounded-xl border border-amber-300 text-xs font-mono"
+                placeholder="petgame-ee3e9"
+                className="w-full px-3 py-1.5 rounded-xl border-[1.8px] border-[#4A3525] bg-[#FFF8F0] text-xs font-mono"
               />
             </div>
 
             {fbSavedToast && (
-              <div className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
-                ✅ {fbSavedToast}
+              <div className="px-3 py-1.5 rounded-xl bg-[#88C9A1]/40 border border-[#4A3525] text-[#4A3525] text-xs font-black">
+                {fbSavedToast}
               </div>
             )}
 
             <button
               type="submit"
-              className="w-full py-2.5 rounded-2xl bg-amber-900 text-white font-extrabold text-xs shadow active:scale-95"
+              className="tactile-btn w-full py-2.5 rounded-2xl bg-[#FFE082] border-2 border-[#4A3525] text-[#4A3525] font-black text-xs"
             >
               Lưu Cấu Hình Kết Nối
             </button>
@@ -426,8 +440,8 @@ export default function Onboarding({ onEnterRoom }) {
       </div>
 
       {/* Footer chỉ dẫn nhanh */}
-      <div className="text-center text-[11px] font-bold text-amber-800/75 pb-1">
-        💡 Mẹo: Trên iPhone mở bằng Safari → bấm Chia sẻ → Thêm vào MH chính
+      <div className="text-center text-[11px] font-extrabold text-[#7D6352] pb-1">
+        Trên iPhone mở bằng Safari → bấm Chia sẻ → Thêm vào MH chính
       </div>
     </div>
   );
