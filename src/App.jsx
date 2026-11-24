@@ -17,7 +17,8 @@ import {
   Share,
   X,
   Eye,
-  EyeOff
+  EyeOff,
+  Gamepad2
 } from 'lucide-react';
 import Onboarding from './components/Onboarding';
 import RoomStage from './components/RoomStage';
@@ -28,6 +29,8 @@ import GiftUnwrapModal from './components/Modals/GiftUnwrapModal';
 import ChatModal from './components/Modals/ChatModal';
 import LogModal from './components/Modals/LogModal';
 import SettingsModal from './components/Modals/SettingsModal';
+import ArcadeModal, { ARCADE_DAILY_CAP } from './components/Modals/ArcadeModal';
+import SubwayRunGame from './components/minigames/SubwayRunGame';
 import { FoodSvgIcon } from './components/furniture/FoodSvgIcons';
 
 import {
@@ -94,7 +97,8 @@ export default function App() {
 
   const [roomData, setRoomData] = useState(null);
   const [activeTray, setActiveTray] = useState(null); // 'feed' | 'care' | null
-  const [activeModal, setActiveModal] = useState(null); // 'sticky' | 'photo' | 'gift' | 'chat' | 'log' | 'settings'
+  const [activeModal, setActiveModal] = useState(null); // 'sticky' | 'photo' | 'gift' | 'chat' | 'log' | 'settings' | 'arcade'
+  const [activeMiniGame, setActiveMiniGame] = useState(null); // 'subwayRun' | null
   const [isDecoratorMode, setIsDecoratorMode] = useState(false);
   const [activeDecoratorSlot, setActiveDecoratorSlot] = useState('wall');
   const [previewEquipped, setPreviewEquipped] = useState(null);
@@ -708,6 +712,91 @@ export default function App() {
     );
   };
 
+  // 13. Kết thúc ván mini-game "Mochi Chạy Phố" (lưu kỷ lục /minigames/subwayRun, cộng thưởng, cập nhật nhật ký & gọi petBrain)
+  const todayKeyStr = new Date().toISOString().slice(0, 10);
+  const dailyArcadeEarned =
+    roomData?.minigames?.dailyBonusDate === todayKeyStr
+      ? Number(roomData?.minigames?.dailyBonusCoins || 0)
+      : 0;
+  const dailyArcadeRemaining = Math.max(0, ARCADE_DAILY_CAP - dailyArcadeEarned);
+
+  const handleSubwayRunComplete = async ({
+    score,
+    distance,
+    collectedCoins,
+    rewardCoins,
+    passedPartner
+  }) => {
+    if (!roomData || !session) return;
+    const now = Date.now();
+    const myRole = session.playerRole;
+    const prevMyBest = roomData?.minigames?.subwayRun?.highScores?.[myRole] || {
+      score: 0,
+      distance: 0,
+      coins: 0
+    };
+
+    const nextCoins = (roomData.coins ?? 0) + rewardCoins;
+    const nextMood = clampStat((roomData.pet?.mood ?? 80) + 12);
+    const nextEnergy = clampStat((roomData.pet?.energy ?? 80) - 6);
+
+    const updates = {
+      coins: nextCoins,
+      'pet/mood': nextMood,
+      'pet/energy': nextEnergy,
+      'pet/isSleeping': false,
+      'pet/lastUpdated': now,
+      'minigames/dailyBonusDate': todayKeyStr,
+      'minigames/dailyBonusCoins': dailyArcadeEarned + rewardCoins
+    };
+
+    if (score > (prevMyBest.score || 0)) {
+      updates[`minigames/subwayRun/highScores/${myRole}`] = {
+        score,
+        distance,
+        coins: collectedCoins,
+        updatedAt: now
+      };
+    }
+
+    const partnerDisplayName = partnerInfo?.name || 'người kia';
+    const actionDesc = passedPartner
+      ? `vừa phá kỷ lục Mochi Chạy Phố (${score} điểm, ${distance}m) và vượt mặt ${partnerDisplayName}!`
+      : `vừa chạy phố cùng ${roomData.pet?.name || 'Mochi'} đạt ${score} điểm (+${rewardCoins} Xu)!`;
+
+    const logEntry = {
+      id: `log_subway_${now}`,
+      actor: session.playerName,
+      action: actionDesc,
+      timestamp: now
+    };
+
+    if (!passedPartner) {
+      updates.logs = [
+        {
+          ...logEntry,
+          petComment: `Chạy gió thổi bay cả tai con rồi, nhưng nhặt được +${rewardCoins} Xu đã ghê!`
+        },
+        ...(roomData.logs || [])
+      ].slice(0, 20);
+    }
+
+    await updateRoomFields(session.roomId, updates);
+
+    if (passedPartner) {
+      triggerPetAiReaction({
+        snapshotRoom: {
+          ...roomData,
+          coins: nextCoins,
+          pet: { ...roomData.pet, mood: nextMood, energy: nextEnergy }
+        },
+        triggerType: 'care',
+        actionDetail: `${session.playerName} vừa chạy phố đạt ${score} điểm, vượt mặt kỷ lục của ${partnerDisplayName}! Hãy cà khịa nhẹ nhàng!`,
+        logEntry
+      });
+    }
+  };
+
   if (!session) {
     return <Onboarding onEnterRoom={handleEnterRoom} />;
   }
@@ -874,6 +963,20 @@ export default function App() {
                 <Eye className="w-4 h-4" />
               )}
             </button>
+
+            {!isPhotoMode && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTray(null);
+                  setActiveModal('arcade');
+                }}
+                className="cozy-glass w-9 h-9 rounded-full border-[2px] border-[#4A3525] bg-[#FFE082]/90 flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
+                title="Góc Vui Chơi • Mochi Chạy Phố"
+              >
+                <Gamepad2 className="w-4 h-4" />
+              </button>
+            )}
 
             {!isPhotoMode && (
               <button
@@ -1187,6 +1290,37 @@ export default function App() {
         onToggleDemoCoopPartner={handleToggleDemoCoopPartner}
         onLeaveRoom={handleLeaveRoom}
       />
+
+      {/* GÓC VUI CHƠI (ARCADE MODAL) */}
+      <ArcadeModal
+        isOpen={activeModal === 'arcade'}
+        onClose={() => setActiveModal(null)}
+        roomData={roomData}
+        dailyEarnedCoins={dailyArcadeEarned}
+        onStartSubwayRun={() => {
+          setActiveModal(null);
+          setActiveMiniGame('subwayRun');
+        }}
+      />
+
+      {/* MINI-GAME TOÀN MÀN HÌNH: MOCHI CHẠY PHỐ (SUBWAY SURFERS 3 LÀN) */}
+      {activeMiniGame === 'subwayRun' && (
+        <SubwayRunGame
+          petType={pet.type || 'cat'}
+          petName={pet.name || 'Mochi'}
+          playerName={session.playerName}
+          partnerName={partnerInfo?.name || 'Người kia'}
+          partnerBestScore={
+            roomData?.minigames?.subwayRun?.highScores?.[partnerRole]?.score || 0
+          }
+          myBestScore={
+            roomData?.minigames?.subwayRun?.highScores?.[session.playerRole]?.score || 0
+          }
+          dailyRemainingCap={dailyArcadeRemaining}
+          onGameComplete={handleSubwayRunComplete}
+          onExit={() => setActiveMiniGame(null)}
+        />
+      )}
     </div>
   );
 }
