@@ -1,4 +1,5 @@
 import React from 'react';
+import availableAssets from '../../data/availableAssets.json';
 
 export const SKEWER_TYPES = [
   { id: 'burger', name: 'Burger Mini', accent: '#FF9B71' },
@@ -22,7 +23,22 @@ const INK = '#4A3525';
  * Tỉ lệ đứng gọn gàng (viewBox 0 0 44 64) dễ nhận diện kể cả ở kích thước mini 16px trong Khay Xem Trước
  */
 export function SkewerSvg({ type, className = 'w-full h-full' }) {
-  // Que tre chung phía sau
+  // Nếu đã có ảnh vẽ tay .webp của xiên nướng này -> hiển thị trực tiếp sắc nét!
+  const skewerList = availableAssets?.skewers || [];
+  if (type && skewerList.includes(type)) {
+    const base = import.meta.env.BASE_URL || './';
+    const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+    return (
+      <img
+        src={`${normalizedBase}assets/skewers/${type}.webp`}
+        alt={type}
+        draggable={false}
+        className={`${className} object-contain select-none`}
+      />
+    );
+  }
+
+  // Que tre chung phía sau (fallback SVG)
   const stick = (
     <line
       x1="22"

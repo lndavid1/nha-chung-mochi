@@ -6,19 +6,69 @@
     "cat_sulky"
   ],
   "windows": [
+    "win_arch",
+    "win_bay",
+    "win_cabin",
     "win_wood"
   ],
   "beds": [
-    "bed_cushion"
+    "bed_cushion",
+    "bed_kotatsu",
+    "bed_royal",
+    "bed_strawberry",
+    "bed_wicker",
+    "bed_wood"
   ],
   "rugs": [
+    "rug_boho",
+    "rug_cloud",
+    "rug_daisy",
+    "rug_flower",
+    "rug_heart",
     "rug_oval"
   ],
   "plants": [
-    "plant_monstera"
+    "plant_aquarium",
+    "plant_cactus",
+    "plant_fiddle",
+    "plant_monstera",
+    "plant_sakura",
+    "plant_Vàng"
   ],
   "decor": [
+    "decor_beanbag",
     "decor_bookshelf",
-    "decor_lamp"
+    "decor_lamp",
+    "decor_nightstand",
+    "decor_teatable",
+    "decor_vinyl"
+  ],
+  "wallDecor": [
+    "wdecor_calendar",
+    "wdecor_clock",
+    "wdecor_fairy",
+    "wdecor_shelf"
+  ],
+  "accessories": [
+    "acc_beret",
+    "acc_bow",
+    "acc_crown",
+    "acc_glasses",
+    "acc_scarf",
+    "acc_sprout"
+  ],
+  "skewers": [
+    "avocado",
+    "burger",
+    "carrot",
+    "corn",
+    "corndog",
+    "donut",
+    "mochi",
+    "naruto",
+    "pineapple",
+    "pizza",
+    "squid",
+    "veggie"
   ]
 }

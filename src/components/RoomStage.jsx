@@ -275,7 +275,7 @@ export default function RoomStage({
       {/* Z-[10]: KHU VỰC ĐỒ TRÊN TƯỜNG (top: 0% -> 50%)                        */}
       {/* ===================================================================== */}
 
-      {/* 1. wallDecor (Dây đèn Fairy Lights hoặc Đồng hồ / Kệ treo / Lịch xé) */}
+      {/* 1. wallDecor (Dây đèn Fairy Lights hoặc Đồng hồ / Kệ treo / Bảng ghi chú) */}
       <button
         type="button"
         onClick={handleTouchWallDecor}
@@ -288,10 +288,19 @@ export default function RoomStage({
         title="Chạm để tương tác đồ treo tường"
       >
         <div className={isFairyWallDecor ? 'w-full h-14' : 'w-full aspect-square'}>
-          <WallDecorSvg
-            wallDecorId={equipped.wallDecor}
-            lightsOn={fairyLightsOn}
-            nowDate={nowDate}
+          <SmartAsset
+            category="wallDecor"
+            assetId={equipped.wallDecor}
+            alt="Đồ treo tường"
+            showShadow={false}
+            className="w-full h-full object-contain"
+            fallbackSvg={
+              <WallDecorSvg
+                wallDecorId={equipped.wallDecor}
+                lightsOn={fairyLightsOn}
+                nowDate={nowDate}
+              />
+            }
           />
         </div>
       </button>

@@ -105,7 +105,8 @@ export const FURNITURE_CATALOG = {
   bed: [
     { id: 'bed_cushion', slot: 'bed', name: 'Ổ Mây Bông Xù', price: 0, desc: 'Ổ đệm mây bồng bềnh kèm chiếc gối nhỏ êm ái' },
     { id: 'bed_wood', slot: 'bed', name: 'Giường Gỗ Chăn Caro', price: 55, desc: 'Giường gỗ sồi mini phủ chăn kẻ caro cam đào xếp nếp' },
-    { id: 'bed_strawberry', slot: 'bed', name: 'Giỏ Mây Đệm Nhung', price: 65, desc: 'Giỏ mây đan tay tỉ mỉ lót nệm nhung hồng phấn' },
+    { id: 'bed_wicker', slot: 'bed', name: 'Giỏ Mây Nệm Matcha', price: 60, desc: 'Giỏ mây đan tay tỉ mỉ lót nệm bông xanh matcha dịu mát' },
+    { id: 'bed_strawberry', slot: 'bed', name: 'Nhà Vòm Dâu Tây', price: 75, desc: 'Ổ nhà vòm hình quả dâu tây hồng phấn siêu ngọt ngào' },
     { id: 'bed_kotatsu', slot: 'bed', name: 'Đệm Bánh Mì Nướng', price: 85, desc: 'Đệm lát bánh mì Toast giòn rụm có miếng bơ vàng làm gối' },
     { id: 'bed_royal', slot: 'bed', name: 'Lều Teepee Cờ Dây', price: 95, desc: 'Lều vải bố ấm cúng trang trí dây cờ tam giác pastel' }
   ],
@@ -113,22 +114,25 @@ export const FURNITURE_CATALOG = {
     { id: 'rug_oval', slot: 'rug', name: 'Thảm Len Tua Rua', price: 0, desc: 'Thảm tròn dệt sợi len kem bơ có tua rua hai đầu' },
     { id: 'rug_daisy', slot: 'rug', name: 'Thảm Trứng Ốp La', price: 50, desc: 'Thảm bông hình quả trứng ốp la lòng đào siêu cưng' },
     { id: 'rug_heart', slot: 'rug', name: 'Thảm Gấu Teddy', price: 65, desc: 'Thảm lông mềm hình khuôn mặt gấu Teddy nâu sữa' },
-    { id: 'rug_cloud', slot: 'rug', name: 'Thảm Mây Cầu Vồng', price: 75, desc: 'Thảm đám mây trắng viền pastel bồng bềnh giữa phòng' },
-    { id: 'rug_boho', slot: 'rug', name: 'Thảm Dệt Thổ Cẩm', price: 80, desc: 'Thảm chữ nhật dệt họa tiết hình học Boho ấm cúng' }
+    { id: 'rug_cloud', slot: 'rug', name: 'Thảm Mây Pastel', price: 75, desc: 'Thảm đám mây trắng viền xanh bầu trời bồng bềnh' },
+    { id: 'rug_boho', slot: 'rug', name: 'Thảm Dệt Thổ Cẩm', price: 80, desc: 'Thảm chữ nhật dệt họa tiết hình học Boho ấm cúng' },
+    { id: 'rug_flower', slot: 'rug', name: 'Thảm Hoa Cúc Họa Mi', price: 70, desc: 'Thảm bông hình hoa cúc trắng nhụy vàng rực rỡ giữa sàn' }
   ],
   plant: [
     { id: 'plant_monstera', slot: 'plant', name: 'Trầu Bà Chậu Chấm Bi', price: 0, desc: 'Cây Monstera lá xẻ xanh mướt trong chậu gốm chấm bi' },
     { id: 'plant_cactus', slot: 'plant', name: 'Xương Rồng Tai Thỏ', price: 50, desc: 'Xương rồng tai thỏ mũm mĩm nở bông hoa hồng trên đỉnh' },
     { id: 'plant_Vàng', slot: 'plant', name: 'Cây Cam Mini Trĩu Quả', price: 65, desc: 'Chậu cam Kumquat sai trĩu quả vàng ươm may mắn' },
-    { id: 'plant_sakura', slot: 'plant', name: 'Bình Gốm Hoa Tulip', price: 70, desc: 'Bình gốm thủ công cắm những bông Tulip hồng đào' },
-    { id: 'plant_aquarium', slot: 'plant', name: 'Bể Cá Thủy Sinh Mini', price: 95, desc: 'Bể kính tròn có rong xanh và chú cá cam bơi qua lại' }
+    { id: 'plant_sakura', slot: 'plant', name: 'Bình Gốm Hoa Tulip', price: 70, desc: 'Bình gốm thủ công cắm những bông Tulip hồng vàng' },
+    { id: 'plant_aquarium', slot: 'plant', name: 'Bể Cá Thủy Sinh Mini', price: 95, desc: 'Bể kính tròn có rong xanh và chú cá vàng bơi qua lại' },
+    { id: 'plant_fiddle', slot: 'plant', name: 'Cây Bàng Singapore', price: 75, desc: 'Chậu cây Bàng Singapore lá xanh mướt chuẩn phong cách Bắc Âu' }
   ],
   decor: [
     { id: 'decor_lamp', slot: 'decor', name: 'Đèn Cây Chao Xếp Ly', price: 0, desc: 'Đèn đứng chao vải xếp ly, chạm vào để bật/tắt ánh vàng ấm' },
-    { id: 'decor_bookshelf', slot: 'decor', name: 'Kệ Sách Gỗ & Cây Rủ', price: 55, desc: 'Kệ gỗ 3 tầng bày sách màu, đồng hồ nhỏ và dây lá rủ' },
-    { id: 'decor_teatable', slot: 'decor', name: 'Bàn Trà Tách Khói Ấm', price: 70, desc: 'Bàn trà gỗ thấp bày ấm trà nóng bốc khói mờ bay lên' },
-    { id: 'decor_vinyl', slot: 'decor', name: 'Tủ Đĩa Than Lo-Fi', price: 95, desc: 'Máy đĩa than cổ điển đĩa xoay chậm, chạm vào phát nốt nhạc' },
-    { id: 'decor_beanbag', slot: 'decor', name: 'Ghế Lười Hạt Xốp', price: 80, desc: 'Ghế lười vải nhung kem kèm gối tựa hình ngôi sao' }
+    { id: 'decor_bookshelf', slot: 'decor', name: 'Kệ Sách Gỗ & Cây Rủ', price: 55, desc: 'Kệ gỗ 2 tầng bày sách màu, cốc gốm và dây thường xuân rủ' },
+    { id: 'decor_teatable', slot: 'decor', name: 'Bàn Trà Tách Khói Ấm', price: 70, desc: 'Bàn trà gỗ thấp kèm gối ngồi và ấm trà nóng thư giãn' },
+    { id: 'decor_vinyl', slot: 'decor', name: 'Tủ Đĩa Than Lo-Fi', price: 95, desc: 'Máy đĩa than cổ điển, chạm vào phát nốt nhạc Lo-Fi chill' },
+    { id: 'decor_beanbag', slot: 'decor', name: 'Ghế Lười Hạt Xốp', price: 80, desc: 'Ghế lười vải nhung kem kèm gối tựa cam đào siêu êm' },
+    { id: 'decor_nightstand', slot: 'decor', name: 'Tủ Gỗ Đèn Nấm Đỏ', price: 85, desc: 'Tủ đầu giường gỗ đặt đèn ngủ hình cây nấm đỏ và đồng hồ báo thức' }
   ],
   wallDecor: [
     { id: 'wdecor_fairy', slot: 'wallDecor', name: 'Dây Đèn Đom Đóm', price: 0, desc: 'Dây đèn Fairy Lights treo vòng cung tỏa sáng lung linh mỗi tối' },

@@ -92,7 +92,13 @@ export function RealItemSvgPreview({ item }) {
   if (item.slot === 'wallDecor') {
     return (
       <div className="w-16 h-12 flex items-center justify-center">
-        <WallDecorSvg wallDecorId={item.id} lightsOn={true} />
+        <SmartAsset
+          category="wallDecor"
+          assetId={item.id}
+          showShadow={false}
+          className="w-full h-full object-contain"
+          fallbackSvg={<WallDecorSvg wallDecorId={item.id} lightsOn={true} />}
+        />
       </div>
     );
   }
