@@ -4,6 +4,11 @@ const PUSH_CONFIG_STORAGE_KEY = 'mochi_push_config_v1';
 const LAST_NUDGE_STORAGE_KEY = 'mochi_last_nudge_ts_v1';
 const NUDGE_COOLDOWN_MS = 15 * 60 * 1000; // 15 phút
 
+// Cấu hình công khai mặc định (CHỈ chứa Worker URL & VAPID Public Key — TUYỆT ĐỐI KHÔNG chứa Private Key)
+const DEFAULT_PUSH_WORKER_URL = 'https://mochi-push-worker.vmc0886165119.workers.dev';
+const DEFAULT_VAPID_PUBLIC_KEY =
+  'BGIq59mJAMQ0sknNr-G2wPJ1nOSQfyvg_JBLX5Ygg_mHWLmcng7Br6XRc99j6bRHaSraJArWL_15plcqMWea-vw';
+
 /**
  * Kiểm tra môi trường hỗ trợ Web Push (đặc biệt xử lý chuẩn cho iOS 16.4+ Standalone PWA)
  */
@@ -49,7 +54,7 @@ export function getPushConfig(roomPushConfig = null) {
     local.workerUrl ||
     import.meta.env.VITE_PUSH_WORKER_URL ||
     roomPushConfig?.workerUrl ||
-    ''
+    DEFAULT_PUSH_WORKER_URL
   )
     .trim()
     .replace(/\/$/, '');
@@ -58,7 +63,7 @@ export function getPushConfig(roomPushConfig = null) {
     local.vapidPublicKey ||
     import.meta.env.VITE_VAPID_PUBLIC_KEY ||
     roomPushConfig?.vapidPublicKey ||
-    ''
+    DEFAULT_VAPID_PUBLIC_KEY
   ).trim();
 
   const pushSecret = (
