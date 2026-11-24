@@ -23,7 +23,8 @@ import {
   Volume2,
   VolumeX,
   Home,
-  ChefHat
+  ChefHat,
+  ShoppingBasket
 } from 'lucide-react';
 import Onboarding from './components/Onboarding';
 import RoomStage from './components/RoomStage';
@@ -35,11 +36,15 @@ import ChatModal from './components/Modals/ChatModal';
 import LogModal from './components/Modals/LogModal';
 import SettingsModal from './components/Modals/SettingsModal';
 import ArcadeModal, { ARCADE_DAILY_CAP } from './components/Modals/ArcadeModal';
+import MarketModal from './components/Modals/MarketModal';
+import FridgeModal from './components/Modals/FridgeModal';
+import CookingGameModal from './components/Modals/CookingGameModal';
+import ServeBowlModal from './components/Modals/ServeBowlModal';
 import SubwayRunGame from './components/minigames/SubwayRunGame';
 import GrillSortGame from './components/minigames/GrillSortGame';
 import DevCalibratorBar from './components/DevCalibratorBar';
 import { loadMergedPetAnchors } from './data/petAnchors';
-import { FoodSvgIcon } from './components/furniture/FoodSvgIcons';
+import { normalizeFridge } from './data/cookingData';
 
 import {
   FOOD_CATALOG,
@@ -47,6 +52,7 @@ import {
   ROOM_SLOTS_BY_ROOM,
   getSlotRoom,
   computeDecayedState,
+  resolveOfflineStateWithBowl,
   clampStat,
   evaluateCoopCareBonus,
   normalizeEquippedRoom,
@@ -145,6 +151,9 @@ export default function App() {
   );
 
   const welcomeBackCheckedRef = useRef(false);
+  const autoEatingRef = useRef(false);
+  const lastBathTsRef = useRef(0);
+  const offlineBowlKeyRef = useRef(null);
   const snd = useSoundSettings();
 
   // Phát hiện Safari iOS chưa chạy ở chế độ standalone
@@ -202,10 +211,45 @@ export default function App() {
 
     const unsubRoom = subscribeToRoom(session.roomId, (data) => {
       if (!data) return;
-      const decayedPet = computeDecayedState(data.pet, Date.now());
+      const now = Date.now();
+      const offlineRes = resolveOfflineStateWithBowl(data.pet, data.bowl, now);
+      const decayedPet = offlineRes.pet || computeDecayedState(data.pet, now);
+
+      if (offlineRes.ateBowlOffline && offlineRes.consumedBowl) {
+        const bowlKey = `${offlineRes.consumedBowl.servedAt || offlineRes.consumedBowl.name}`;
+        if (offlineBowlKeyRef.current !== bowlKey) {
+          offlineBowlKeyRef.current = bowlKey;
+          const ateTimeStr = new Date(offlineRes.ateAt || now).toLocaleTimeString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          const logEntry = {
+            id: `log_autoeat_${now}`,
+            actor: data.pet?.name || 'Mochi',
+            action: `${ateTimeStr} - ${data.pet?.name || 'Mochi'} thấy bụng đói nên đã tự chạy ra bếp ăn sạch bát ${offlineRes.consumedBowl.name}!`,
+            petComment: `Hồi nãy đói quá con tự ra bếp ăn sạch bát ${offlineRes.consumedBowl.name} rồi, ngon xỉu!`,
+            timestamp: now
+          };
+          updateRoomFields(session.roomId, {
+            bowl: null,
+            'pet/hunger': decayedPet.hunger,
+            'pet/mood': decayedPet.mood,
+            'pet/lastUpdated': now,
+            'pet/aiBubble': {
+              dialogue: `Hồi nãy đói quá con tự ra bếp ăn sạch bát ${offlineRes.consumedBowl.name} rồi, ngon xỉu!`,
+              emotion: 'happy',
+              modelUsed: 'auto-eat',
+              updatedAt: now
+            },
+            logs: [logEntry, ...(data.logs || [])].slice(0, 20)
+          }).catch(() => {});
+        }
+      }
+
       setRoomData({
         ...data,
-        pet: decayedPet || data.pet
+        pet: decayedPet || data.pet,
+        bowl: offlineRes.ateBowlOffline ? null : data.bowl || null
       });
     });
 
@@ -542,6 +586,311 @@ export default function App() {
       logEntry
     });
   };
+
+  // 3B. Tắm trực tiếp khi chạm vào Bồn tắm trong Phòng Tắm (+35 Sạch, +10 Vui, cooldown 2 phút)
+  const handleDirectBathPet = async () => {
+    if (!roomData || !session) return;
+    const currentHygiene = roomData.pet?.hygiene ?? 85;
+    if (currentHygiene >= 95) {
+      showToast(`${roomData.pet?.name || 'Mochi'} đang thơm phức sạch bóng rồi!`);
+      return;
+    }
+    const now = Date.now();
+    if (now - lastBathTsRef.current < 2 * 60 * 1000) {
+      showToast('Bé vừa tắm xong đó, nghịch bong bóng một lát rồi tắm tiếp nha!');
+      return;
+    }
+    lastBathTsRef.current = now;
+    const bonus = evaluateCoopCareBonus(roomData, session.playerRole, 8);
+    const nextHygiene = clampStat(currentHygiene + 35);
+    const nextMood = clampStat((roomData.pet?.mood ?? 80) + 10);
+    const nextCoins = (roomData.coins ?? 0) + bonus.earnedCoins;
+
+    setActiveActionEvent({ type: 'bath', id: now });
+    await updateRoomFields(session.roomId, {
+      coins: nextCoins,
+      streak: bonus.nextStreak,
+      streakDate: bonus.streakDate,
+      todayComboCounted: bonus.todayComboCounted,
+      'pet/hygiene': nextHygiene,
+      'pet/mood': nextMood,
+      'pet/isSleeping': false,
+      'pet/lastCareBy': session.playerRole,
+      'pet/lastUpdated': now
+    });
+
+    showToast(`Bé nhảy tùm vào bồn tắm bọt! (+35 Sạch, +10 Vui, +${bonus.earnedCoins} Xu)`);
+    const logEntry = {
+      id: `log_bath_${now}`,
+      actor: session.playerName,
+      action: `đã tắm bọt xà phòng cho ${roomData.pet?.name || 'Mochi'} trong Phòng Tắm!`,
+      timestamp: now
+    };
+    triggerPetAiReaction({
+      snapshotRoom: {
+        ...roomData,
+        coins: nextCoins,
+        pet: { ...roomData.pet, hygiene: nextHygiene, mood: nextMood, isSleeping: false }
+      },
+      triggerType: 'care',
+      actionDetail: 'tắm bồn xà phòng thơm phức cùng vịt cao su',
+      logEntry
+    });
+  };
+
+  // 3C. Đi Chợ Thực Phẩm -> cất thẳng vào Tủ Lạnh (/rooms/{roomId}/fridge)
+  const handleBuyMarketItem = async (category, item, qty = 1) => {
+    if (!roomData || !session) return;
+    const cost = item.price * qty;
+    if ((roomData.coins ?? 0) < cost) {
+      showToast('Chưa đủ Xu chung rồi! Hãy chơi mini-game hoặc chăm bé để nhận thêm Xu nhé.');
+      return;
+    }
+    const fridge = normalizeFridge(roomData.fridge);
+    const nextFridge = {
+      ...fridge,
+      [category]: {
+        ...fridge[category],
+        [item.id]: (fridge[category]?.[item.id] || 0) + qty
+      }
+    };
+    await updateRoomFields(session.roomId, {
+      coins: (roomData.coins ?? 0) - cost,
+      fridge: nextFridge
+    });
+    showToast(`Đã mua x${qty} ${item.name} cất vào Tủ Lạnh!`);
+  };
+
+  // 3D. Hoàn thành Mini-game Nấu Pate trên Bếp -> trừ nguyên liệu, cất hũ Pate vào Tủ Lạnh
+  const handleFinishCooking = async ({ recipe, quality, bonusCoins, cookedBy }) => {
+    if (!roomData || !session || !recipe) return;
+    const now = Date.now();
+    const fridge = normalizeFridge(roomData.fridge);
+    const nextIngredients = { ...fridge.ingredients };
+    Object.entries(recipe.ingredients).forEach(([ingId, req]) => {
+      nextIngredients[ingId] = Math.max(0, (nextIngredients[ingId] || 0) - req);
+    });
+
+    const newDish = {
+      id: `dish_${now}`,
+      recipeId: recipe.id,
+      name: recipe.name,
+      quality,
+      portions: recipe.portions,
+      cookedBy: cookedBy || session.playerName,
+      cookedAt: now
+    };
+
+    const nextFridge = {
+      ...fridge,
+      ingredients: nextIngredients,
+      cookedDishes: [newDish, ...fridge.cookedDishes].slice(0, 20)
+    };
+
+    const starsText = '⭐'.repeat(quality);
+    const logEntry = {
+      id: `log_cook_${now}`,
+      actor: session.playerName,
+      action: `vừa trổ tài nấu ${recipe.portions} phần ${recipe.name} ${starsText} cất tủ lạnh!`,
+      petComment:
+        quality === 3
+          ? 'Mùi Pate thượng hạng thơm nức cả nhà, mau đổ ra bát cho con ăn đi!'
+          : quality === 1
+          ? 'Hơi có mùi khét khét nhẹ nha... nhưng con vẫn nể mặt ăn thử!'
+          : 'Thơm quá đi! Đầu bếp nhà mình khéo tay ghê!',
+      timestamp: now
+    };
+
+    await updateRoomFields(session.roomId, {
+      coins: (roomData.coins ?? 0) + (bonusCoins || 0),
+      fridge: nextFridge,
+      logs: [logEntry, ...(roomData.logs || [])].slice(0, 20)
+    });
+
+    if (quality === 3) {
+      notifyPartner(roomData, session.roomId, session.playerRole, {
+        title: `🍲 ${session.playerName} vừa nấu Pate 3 sao!`,
+        body: `${recipe.portions} phần ${recipe.name} đang chờ trong Tủ Lạnh, vào đổ bát nhận x2 Xu nha!`,
+        tag: 'mochi-cook'
+      });
+    }
+  };
+
+  // 3E. Đổ 1 phần thức ăn từ Tủ Lạnh ra Bát (/rooms/{roomId}/bowl)
+  const handleServeToBowl = async (serving) => {
+    if (!roomData || !session || !serving) return;
+    const now = Date.now();
+    const fridge = normalizeFridge(roomData.fridge);
+    const nextFridge = { ...fridge };
+
+    if (serving.foodType === 'cooked') {
+      nextFridge.cookedDishes = fridge.cookedDishes
+        .map((d) => (d.id === serving.dishId ? { ...d, portions: (d.portions || 1) - 1 } : d))
+        .filter((d) => d.portions > 0);
+    } else {
+      nextFridge.fastFood = {
+        ...fridge.fastFood,
+        [serving.itemId]: Math.max(0, (fridge.fastFood[serving.itemId] || 0) - 1)
+      };
+    }
+
+    const bowlPayload = {
+      foodType: serving.foodType,
+      itemId: serving.itemId,
+      name: serving.name,
+      quality: serving.quality || 2,
+      hungerGain: serving.hungerGain,
+      moodGain: serving.moodGain,
+      cookedBy: serving.cookedBy || null,
+      servedBy: session.playerName,
+      servedAt: now
+    };
+
+    await updateRoomFields(session.roomId, {
+      fridge: nextFridge,
+      bowl: bowlPayload
+    });
+
+    if ((roomData.pet?.hunger ?? 80) >= 75) {
+      showToast('No căng bụng rồi, để đó xíu đói bé tự ra chén sạch nha!');
+    } else {
+      showToast(`Đã đổ ${serving.name} ra bát, bé đang chạy tới ăn!`);
+    }
+  };
+
+  // 3F. Dọn bát trả lại vào Tủ Lạnh nếu muốn đổi món khác
+  const handleClearBowlToFridge = async () => {
+    if (!roomData || !session || !roomData.bowl) return;
+    const b = roomData.bowl;
+    const fridge = normalizeFridge(roomData.fridge);
+    const nextFridge = { ...fridge };
+
+    if (b.foodType === 'cooked') {
+      nextFridge.cookedDishes = [
+        {
+          id: `dish_ret_${Date.now()}`,
+          recipeId: b.itemId,
+          name: b.name,
+          quality: b.quality || 2,
+          portions: 1,
+          cookedBy: b.cookedBy || session.playerName,
+          cookedAt: Date.now()
+        },
+        ...fridge.cookedDishes
+      ];
+    } else {
+      nextFridge.fastFood = {
+        ...fridge.fastFood,
+        [b.itemId]: (fridge.fastFood[b.itemId] || 0) + 1
+      };
+    }
+
+    await updateRoomFields(session.roomId, {
+      fridge: nextFridge,
+      bowl: null
+    });
+    showToast(`Đã cất ${b.name} lại vào Tủ Lạnh!`);
+  };
+
+  // 3G. CƠ CHẾ MÈO ĐÓI TỰ TỚI BÁT ĂN REALTIME (khi ở Nhà Bếp, bowl !== null, hunger < 75, không ngủ)
+  useEffect(() => {
+    if (
+      !roomData ||
+      !session ||
+      currentRoom !== 'kitchen' ||
+      !roomData.bowl ||
+      roomData.pet?.isSleeping ||
+      autoEatingRef.current
+    ) {
+      return;
+    }
+    const currentHunger = roomData.pet?.hunger ?? 80;
+    if (currentHunger >= 75) return;
+
+    autoEatingRef.current = true;
+    const activeBowl = roomData.bowl;
+    const now = Date.now();
+    soundEngine.play('eat');
+    setActiveActionEvent({ type: 'feed', id: now });
+
+    const eatTimer = setTimeout(async () => {
+      try {
+        const doneAt = Date.now();
+        const isFamilyMeal = Boolean(
+          activeBowl.cookedBy &&
+            activeBowl.servedBy &&
+            activeBowl.cookedBy !== activeBowl.servedBy
+        );
+        const bonus = evaluateCoopCareBonus(roomData, session.playerRole, 10);
+        const familyExtra = isFamilyMeal ? 20 : 0;
+        const nextCoins = (roomData.coins ?? 0) + bonus.earnedCoins + familyExtra;
+        const nextHunger = clampStat(currentHunger + (activeBowl.hungerGain || 30));
+        const nextMood = clampStat((roomData.pet?.mood ?? 80) + (activeBowl.moodGain || 10));
+
+        await updateRoomFields(session.roomId, {
+          bowl: null,
+          coins: nextCoins,
+          streak: bonus.nextStreak,
+          streakDate: bonus.streakDate,
+          todayComboCounted: bonus.todayComboCounted,
+          'pet/hunger': nextHunger,
+          'pet/mood': nextMood,
+          'pet/lastCareBy': session.playerRole,
+          'pet/lastUpdated': doneAt
+        });
+
+        if (isFamilyMeal) {
+          soundEngine.play('coin');
+          showToast(
+            `BỮA CƠM GIA ĐÌNH x2 XU (+${bonus.earnedCoins + familyExtra} Xu)! ${activeBowl.cookedBy} nấu & ${activeBowl.servedBy} bày bát!`
+          );
+        } else {
+          showToast(
+            `${roomData.pet?.name || 'Mochi'} đã ăn sạch ${activeBowl.name}! (+${activeBowl.hungerGain} Đói)`
+          );
+        }
+
+        const logEntry = {
+          id: `log_eat_${doneAt}`,
+          actor: roomData.pet?.name || 'Mochi',
+          action: isFamilyMeal
+            ? `đã ăn sạch bát ${activeBowl.name} (${activeBowl.cookedBy} nấu & ${activeBowl.servedBy} bày — Bữa Cơm Gia Đình +20 Xu!)`
+            : `đã tự chạy ra bát ăn sạch ${activeBowl.name}${
+                activeBowl.foodType === 'cooked' ? ` (${activeBowl.quality || 3}⭐)` : ''
+              }!`,
+          timestamp: doneAt
+        };
+
+        triggerPetAiReaction({
+          snapshotRoom: {
+            ...roomData,
+            bowl: null,
+            coins: nextCoins,
+            pet: { ...roomData.pet, hunger: nextHunger, mood: nextMood }
+          },
+          triggerType: 'feed',
+          actionDetail:
+            activeBowl.foodType === 'cooked'
+              ? `vừa ăn món Pate nhà làm "${activeBowl.name}" chất lượng ${activeBowl.quality || 3} sao do ${activeBowl.cookedBy} nấu`
+              : `vừa ăn ${activeBowl.name} trong bát`,
+          logEntry
+        });
+      } finally {
+        autoEatingRef.current = false;
+      }
+    }, 2800);
+
+    return () => {
+      clearTimeout(eatTimer);
+      autoEatingRef.current = false;
+    };
+  }, [
+    currentRoom,
+    roomData?.bowl?.servedAt,
+    roomData?.pet?.hunger,
+    roomData?.pet?.isSleeping,
+    session?.roomId
+  ]);
 
   // 4. Dọn 1 cục rác/bụi trên sàn (+5 Xu)
   const handleCleanSingleTrash = async (trashId) => {
@@ -1139,6 +1488,11 @@ export default function App() {
           }}
           onOpenGift={() => setActiveModal('gift')}
           onOpenChat={() => setActiveModal('chat')}
+          onToggleSleep={() => handleCareAction('toggle_sleep')}
+          onBathPet={handleDirectBathPet}
+          onOpenFridge={() => setActiveModal('fridge')}
+          onOpenCooking={() => setActiveModal('cooking')}
+          onOpenServeBowl={() => setActiveModal('serveBowl')}
           hasUnreadSticky={hasUnreadSticky}
         />
       </div>
@@ -1314,127 +1668,54 @@ export default function App() {
           }}
           className="absolute inset-x-0 z-[55] px-3 pointer-events-none flex flex-col gap-1.5"
         >
-          {/* Khay trượt nhanh: Cho Ăn hoặc Chăm Sóc */}
-          <AnimatePresence>
-            {activeTray === 'feed' && (
-              <motion.div
-                initial={{ opacity: 0, y: 16, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 16, scale: 0.96 }}
-                className="pointer-events-auto bg-[#FFFDF9]/98 backdrop-blur-md rounded-[24px] p-3 border-[2.2px] border-[#4A3525] shadow-2xl"
-              >
-                <div className="flex items-center justify-between mb-2 px-1">
-                  <span className="text-xs font-black text-[#4A3525]">
-                    Bữa ngon cho {pet.name || 'Mochi'} (Đổi phiên = x2 Xu)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTray(null)}
-                    className="px-2 py-0.5 rounded-lg bg-[#FFF0DE] border border-[#4A3525] text-[11px] font-black text-[#4A3525]"
-                  >
-                    Đóng
-                  </button>
-                </div>
-                <div className="grid grid-cols-4 gap-2">
-                  {FOOD_CATALOG.map((food) => (
-                    <button
-                      key={food.id}
-                      type="button"
-                      onClick={() => handleFeedPet(food)}
-                      className="tactile-btn p-2 rounded-2xl bg-[#FFF8F0] border-[1.8px] border-[#4A3525] flex flex-col items-center text-center"
-                    >
-                      <FoodSvgIcon foodId={food.id} className="w-10 h-10" />
-                      <span className="text-[10.5px] font-black text-[#4A3525] mt-1 leading-tight line-clamp-1">
-                        {food.name}
-                      </span>
-                      <span className="text-[10px] font-extrabold text-[#E87A4D] mt-0.5 tabular-nums">
-                        {food.price === 0 ? 'Miễn phí' : `${food.price} Xu`}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {activeTray === 'care' && (
-              <motion.div
-                initial={{ opacity: 0, y: 16, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 16, scale: 0.96 }}
-                className="pointer-events-auto bg-[#FFFDF9]/98 backdrop-blur-md rounded-[24px] p-3 border-[2.2px] border-[#4A3525] shadow-2xl"
-              >
-                <div className="flex items-center justify-between mb-2 px-1">
-                  <span className="text-xs font-black text-[#4A3525]">
-                    Chăm sóc & Dọn dẹp Tổ Ấm
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTray(null)}
-                    className="px-2 py-0.5 rounded-lg bg-[#FFF0DE] border border-[#4A3525] text-[11px] font-black text-[#4A3525]"
-                  >
-                    Đóng
-                  </button>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleCareAction('bath')}
-                    className="tactile-btn p-2.5 rounded-2xl bg-[#FFF8F0] border-[1.8px] border-[#4A3525] flex flex-col items-center"
-                  >
-                    <Bath className="w-5 h-5 text-[#4A3525] mb-1" />
-                    <span className="text-xs font-black text-[#4A3525]">Tắm Thơm</span>
-                    <span className="text-[10px] font-bold text-[#7D6352]">Sạch 100%</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleCareAction('clean_all')}
-                    className="tactile-btn p-2.5 rounded-2xl bg-[#FFF8F0] border-[1.8px] border-[#4A3525] flex flex-col items-center"
-                  >
-                    <Sparkles className="w-5 h-5 text-[#5EA87A] mb-1" />
-                    <span className="text-xs font-black text-[#4A3525]">Dọn Phòng</span>
-                    <span className="text-[10px] font-bold text-[#7D6352]">Quét sạch bụi</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleCareAction('toggle_sleep')}
-                    className="tactile-btn p-2.5 rounded-2xl bg-[#FFF8F0] border-[1.8px] border-[#4A3525] flex flex-col items-center"
-                  >
-                    {pet.isSleeping ? (
-                      <Sun className="w-5 h-5 text-[#E87A4D] mb-1" />
-                    ) : (
-                      <Moon className="w-5 h-5 text-[#4A3525] mb-1" />
-                    )}
-                    <span className="text-xs font-black text-[#4A3525]">
-                      {pet.isSleeping ? 'Bật Đèn Dậy' : 'Tắt Đèn Ngủ'}
-                    </span>
-                    <span className="text-[10px] font-bold text-[#7D6352]">
-                      +15 Năng lượng/h
-                    </span>
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* CHẤM CHỈ BÁO PHÒNG TỐI GIẢN (Vuốt ngang Trái/Phải để chuyển phòng) */}
+          {/* CHẤM CHỈ BÁO PHÒNG + GỢI Ý NHU CẦU (Needs Indicators) */}
           <div className="pointer-events-auto mx-auto flex items-center gap-2 px-3 py-1 rounded-full cozy-glass border-[1.5px] border-[#4A3525]/80 shadow-sm">
             <span className="text-[10px] font-black text-[#4A3525] whitespace-nowrap">
               ‹ {ROOM_LIST.find((r) => r.id === currentRoom)?.label || 'Phòng khách'} ›
             </span>
-            <div className="flex items-center gap-1">
-              {ROOM_LIST.map((rm) => (
-                <span
-                  key={rm.id}
-                  className={`h-1.5 rounded-full transition-all ${
-                    currentRoom === rm.id
-                      ? 'w-4 bg-[#FF9B71] border border-[#4A3525]'
-                      : 'w-1.5 bg-[#4A3525]/25'
-                  }`}
-                />
-              ))}
+            <div className="flex items-center gap-1.5">
+              {ROOM_LIST.map((rm) => {
+                const needsAttention =
+                  (rm.id === 'kitchen' && (pet.hunger ?? 80) < 40) ||
+                  (rm.id === 'bathroom' && (pet.hygiene ?? 90) < 40) ||
+                  (rm.id === 'living' && (pet.energy ?? 85) < 40);
+                return (
+                  <button
+                    key={rm.id}
+                    type="button"
+                    onClick={() => {
+                      if (currentRoom !== rm.id) {
+                        soundEngine.play('sheetOpen');
+                        handleChangeRoom(rm.id);
+                      }
+                    }}
+                    title={rm.label}
+                    className={`relative h-2 rounded-full transition-all ${
+                      currentRoom === rm.id
+                        ? 'w-5 bg-[#FF9B71] border border-[#4A3525]'
+                        : needsAttention
+                        ? 'w-2.5 bg-[#E85D75] animate-ping'
+                        : 'w-2 bg-[#4A3525]/25'
+                    }`}
+                  />
+                );
+              })}
             </div>
+            {(pet.hunger ?? 80) < 40 && currentRoom !== 'kitchen' && (
+              <span className="text-[9.5px] font-black text-[#E85D75] whitespace-nowrap animate-pulse">
+                • Bếp
+              </span>
+            )}
+            {(pet.hygiene ?? 90) < 40 && currentRoom !== 'bathroom' && (
+              <span className="text-[9.5px] font-black text-[#E85D75] whitespace-nowrap animate-pulse">
+                • Tắm
+              </span>
+            )}
+            {(pet.energy ?? 85) < 40 && currentRoom !== 'living' && (
+              <span className="text-[9.5px] font-black text-[#E85D75] whitespace-nowrap animate-pulse">
+                • Ngủ
+              </span>
+            )}
           </div>
 
           {/* THANH 4 CHỈ SỐ TINH GỌN */}
@@ -1469,39 +1750,21 @@ export default function App() {
             })}
           </div>
 
-          {/* TACTILE BOTTOM DOCK */}
+          {/* TACTILE BOTTOM DOCK (4 NÚT RỘNG RÃI: Đi Chợ | Trang trí | Trò chuyện | Nhật ký) */}
           <nav
             onClickCapture={() => soundEngine.play('tap')}
-            className="pointer-events-auto cozy-glass rounded-[28px] p-1.5 border-[2.4px] border-[#4A3525] grid grid-cols-5 gap-1.5"
+            className="pointer-events-auto cozy-glass rounded-[28px] p-1.5 border-[2.4px] border-[#4A3525] grid grid-cols-4 gap-2"
           >
             <button
               type="button"
-              onClick={() =>
-                setActiveTray(activeTray === 'feed' ? null : 'feed')
-              }
-              className={`tactile-btn py-2 rounded-[20px] border-[1.8px] border-[#4A3525] flex flex-col items-center justify-center gap-0.5 ${
-                activeTray === 'feed'
-                  ? 'bg-[#FFE082] text-[#4A3525]'
-                  : 'bg-[#FFFDF9] text-[#4A3525]'
-              }`}
+              onClick={() => {
+                setActiveTray(null);
+                setActiveModal('market');
+              }}
+              className="tactile-btn py-2 rounded-[20px] border-[1.8px] border-[#4A3525] bg-[#88C9A1] text-[#4A3525] flex flex-col items-center justify-center gap-0.5"
             >
-              <Utensils className="w-4 h-4" />
-              <span className="text-[10.5px] leading-tight whitespace-nowrap font-black">Cho ăn</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                setActiveTray(activeTray === 'care' ? null : 'care')
-              }
-              className={`tactile-btn py-2 rounded-[20px] border-[1.8px] border-[#4A3525] flex flex-col items-center justify-center gap-0.5 ${
-                activeTray === 'care'
-                  ? 'bg-[#88C9A1] text-[#4A3525]'
-                  : 'bg-[#FFFDF9] text-[#4A3525]'
-              }`}
-            >
-              <Sparkles className="w-4 h-4" />
-              <span className="text-[10.5px] leading-tight whitespace-nowrap font-black">Chăm sóc</span>
+              <ShoppingBasket className="w-4 h-4" />
+              <span className="text-[10.5px] leading-tight whitespace-nowrap font-black">Đi Chợ</span>
             </button>
 
             <button
@@ -1600,6 +1863,43 @@ export default function App() {
         isOpen={activeModal === 'log'}
         onClose={() => setActiveModal(null)}
         roomData={roomData}
+      />
+
+      {/* HỆ THỐNG ĐI CHỢ -> TỦ LẠNH -> NẤU PATE -> ĐỔ BÁT */}
+      <MarketModal
+        isOpen={activeModal === 'market'}
+        onClose={() => setActiveModal(null)}
+        roomData={roomData}
+        onBuyMarketItem={handleBuyMarketItem}
+        onOpenFridge={() => setActiveModal('fridge')}
+      />
+
+      <FridgeModal
+        isOpen={activeModal === 'fridge'}
+        onClose={() => setActiveModal(null)}
+        roomData={roomData}
+        onOpenMarket={() => setActiveModal('market')}
+        onOpenStickyNote={handleOpenStickyModal}
+        onOpenCooking={() => setActiveModal('cooking')}
+      />
+
+      <CookingGameModal
+        isOpen={activeModal === 'cooking'}
+        onClose={() => setActiveModal(null)}
+        roomData={roomData}
+        playerName={session.playerName}
+        onFinishCooking={handleFinishCooking}
+        onOpenMarket={() => setActiveModal('market')}
+      />
+
+      <ServeBowlModal
+        isOpen={activeModal === 'serveBowl'}
+        onClose={() => setActiveModal(null)}
+        roomData={roomData}
+        onServeToBowl={handleServeToBowl}
+        onClearBowlToFridge={handleClearBowlToFridge}
+        onOpenCooking={() => setActiveModal('cooking')}
+        onOpenMarket={() => setActiveModal('market')}
       />
 
       <SettingsModal

@@ -488,6 +488,54 @@ export function computeDecayedState(petState, now = Date.now()) {
   return updated;
 }
 
+/**
+ * Mô phỏng tự động ăn bát thức ăn chờ sẵn trong thời gian cả 2 người tắt app
+ * Nếu bowl !== null và độ đói tụt xuống dưới 70 -> thú tự ra bếp ăn sạch bát tại thời điểm đó!
+ */
+export function resolveOfflineStateWithBowl(petState, bowl, now = Date.now()) {
+  if (!petState) return { pet: null, ateBowlOffline: false, consumedBowl: null, ateAt: null };
+  if (!bowl || !bowl.name || petState.isSleeping) {
+    return {
+      pet: computeDecayedState(petState, now),
+      ateBowlOffline: false,
+      consumedBowl: null,
+      ateAt: null
+    };
+  }
+
+  const lastUpdated = petState.lastUpdated || now;
+  const elapsedMs = Math.max(0, now - lastUpdated);
+  const elapsedHours = elapsedMs / (1000 * 60 * 60);
+  const startHunger = petState.hunger ?? 80;
+  const endHungerWithoutBowl = clampStat(startHunger - elapsedHours * 4.0);
+
+  if (startHunger < 70 || endHungerWithoutBowl < 70) {
+    const hoursUntilHungry = startHunger < 70 ? 0 : Math.max(0, (startHunger - 70) / 4.0);
+    const ateAt = Math.min(now, Math.round(lastUpdated + hoursUntilHungry * 3600 * 1000));
+    const stateAtEat = computeDecayedState(petState, ateAt) || petState;
+    const afterEatPet = {
+      ...stateAtEat,
+      hunger: clampStat((stateAtEat.hunger ?? 70) + (bowl.hungerGain || 30)),
+      mood: clampStat((stateAtEat.mood ?? 70) + (bowl.moodGain || 10)),
+      lastUpdated: ateAt
+    };
+    const finalPet = computeDecayedState(afterEatPet, now) || afterEatPet;
+    return {
+      pet: { ...finalPet, lastUpdated: now },
+      ateBowlOffline: true,
+      consumedBowl: bowl,
+      ateAt
+    };
+  }
+
+  return {
+    pet: computeDecayedState(petState, now),
+    ateBowlOffline: false,
+    consumedBowl: null,
+    ateAt: null
+  };
+}
+
 export function resolvePetEmotion(pet, bothOnline = false) {
   if (!pet) return 'happy';
   if (pet.isSleeping) return 'sleepy';

@@ -39,6 +39,7 @@ import {
 import PetAvatar from './pet/PetAvatar';
 import RoomLighting, { SunbeamOverlay } from './RoomLighting';
 import SmartAsset from './common/SmartAsset';
+import { BowlFoodOverlaySvg } from '../data/cookingData';
 
 /**
  * RoomStage — Hệ tọa độ khóa cứng 50% Tường / 50% Sàn (Chuẩn 390x844 iPhone)
@@ -74,6 +75,11 @@ export default function RoomStage({
   onOpenPhotoFrame,
   onOpenGift,
   onOpenChat,
+  onToggleSleep,
+  onBathPet,
+  onOpenFridge,
+  onOpenCooking,
+  onOpenServeBowl,
   hasUnreadSticky = false
 }) {
   const [hearts, setHearts] = useState([]);
@@ -315,8 +321,13 @@ export default function RoomStage({
 
   const handleTouchBed = () => {
     soundEngine.play('tap');
-    setOnBedByTap((prev) => !prev);
-    spawnBurst(45, 52, onBedByTap ? 'Xuống thảm chơi!' : 'Lên giường nằm êm~', '🛏️');
+    if (onToggleSleep) {
+      onToggleSleep();
+      spawnBurst(36, 48, pet.isSleeping ? 'Thức dậy chơi!' : 'Đắp chăn đi ngủ~', '🛏️');
+    } else {
+      setOnBedByTap((prev) => !prev);
+      spawnBurst(36, 48, onBedByTap ? 'Xuống thảm chơi!' : 'Lên giường nằm êm~', '🛏️');
+    }
   };
 
   const handleTouchWindow = () => {
@@ -376,18 +387,18 @@ export default function RoomStage({
     if (onCoopPlayBall) onCoopPlayBall();
   };
 
-  // Tương tác nội thất Nhà Bếp
+  // Tương tác nội thất Nhà Bếp (Diegetic: Tủ lạnh -> FridgeModal, Bếp -> Nấu Pate, Bát -> Đổ đồ ăn)
   const handleTouchFridge = () => {
     soundEngine.play('paper');
-    spawnBurst(17, 36, 'Giấy nhớ tủ lạnh!', '📝');
-    if (onOpenStickyNote) onOpenStickyNote();
+    if (onOpenFridge) onOpenFridge();
+    else if (onOpenStickyNote) onOpenStickyNote();
   };
 
   const handleTouchStove = () => {
     soundEngine.play('teaSteam');
     setStoveSteaming(true);
-    spawnBurst(64, 34, 'Thơm lừng~', '🍲');
-    setTimeout(() => setStoveSteaming(false), 1800);
+    setTimeout(() => setStoveSteaming(false), 1200);
+    if (onOpenCooking) onOpenCooking();
   };
 
   const handleTouchDiningTable = () => {
@@ -396,8 +407,8 @@ export default function RoomStage({
   };
 
   const handleTouchPetBowl = () => {
-    soundEngine.play('eat');
-    spawnBurst(81, 64, 'Măm măm~', '🥣');
+    soundEngine.play('tap');
+    if (onOpenServeBowl) onOpenServeBowl();
   };
 
   // Tương tác nội thất Phòng Tắm
@@ -416,7 +427,11 @@ export default function RoomStage({
   const handleTouchBathtub = () => {
     soundEngine.play('bath');
     spawnBathBubbles(9);
-    spawnBurst(68, 44, 'Bong bóng!', '🫧');
+    if (onBathPet) {
+      onBathPet();
+    } else {
+      spawnBurst(68, 44, 'Bong bóng!', '🫧');
+    }
   };
 
   const handleTouchBathProp = () => {
@@ -954,15 +969,32 @@ export default function RoomStage({
                 whileTap={{ scale: 0.95 }}
                 style={{ right: '6%', top: '66%', width: '26%' }}
                 className="absolute z-[25] focus:outline-none cursor-pointer"
-                title="Bát ăn của bé"
+                title="Chạm để đổ thức ăn ra bát"
               >
-                <SmartAsset
-                  category="kitchen"
-                  assetId={kitchenEquipped.petBowl}
-                  alt="Bát ăn thú cưng"
-                  showShadow={false}
-                  fallbackSvg={<PetBowlSvg bowlId={kitchenEquipped.petBowl} />}
-                />
+                <div className="relative w-full">
+                  <SmartAsset
+                    category="kitchen"
+                    assetId={kitchenEquipped.petBowl}
+                    alt="Bát ăn thú cưng"
+                    showShadow={false}
+                    fallbackSvg={<PetBowlSvg bowlId={kitchenEquipped.petBowl} />}
+                  />
+                  {/* Hiển thị đống thức ăn/Pate đầy ụ khi bát có đồ ăn */}
+                  {roomData?.bowl && (
+                    <div className="pointer-events-none absolute -top-2 inset-x-0 z-20">
+                      <BowlFoodOverlaySvg
+                        isCooked={roomData.bowl.foodType === 'cooked'}
+                        className="w-full h-auto"
+                      />
+                    </div>
+                  )}
+                  {/* Bong bóng suy nghĩ nhỏ khi bát trống & bé đang đói */}
+                  {!roomData?.bowl && (pet.hunger ?? 80) < 50 && (
+                    <div className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-[#FFFDF9] border-[1.6px] border-[#4A3525] text-[9px] font-black text-[#E85D75] whitespace-nowrap animate-bounce shadow-sm">
+                      Đổ đồ ăn!
+                    </div>
+                  )}
+                </div>
               </motion.button>
             </>
           )}

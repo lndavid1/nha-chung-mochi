@@ -322,10 +322,18 @@ function buildCompactContextSnapshot({
       ? `[Tranh vẽ tay bởi ${roomData?.stickyNote?.author || p1}]`
       : `${roomData?.stickyNote?.text || ''} (bởi ${roomData?.stickyNote?.author || p1})`;
 
+  const bowlDesc = roomData?.bowl
+    ? `Đang có "${roomData.bowl.name}"${roomData.bowl.foodType === 'cooked' ? ` (${roomData.bowl.quality || 3} sao do ${roomData.bowl.cookedBy} nấu)` : ''}`
+    : 'Bát trống';
+  const cookedPateCount = Array.isArray(roomData?.fridge?.cookedDishes)
+    ? roomData.fridge.cookedDishes.reduce((s, d) => s + (d.portions || 0), 0)
+    : 0;
+
   return [
     `Giờ: ${nowStr}. Đang ở: ${roomLabel}. Tên thú: ${pet.name || 'Mochi'} (${pet.type || 'cat'}).`,
     `2 chủ nhân: ${p1} & ${p2}. Cả 2 cùng online: ${bothOnline ? 'Có' : 'Không'}.`,
     `Chỉ số (0-100): Đói=${pet.hunger}, Vui=${pet.mood}, Sạch=${pet.hygiene}, Năng lượng=${pet.energy}, Đang ngủ=${pet.isSleeping ? 'Có' : 'Không'}.`,
+    `Bát ăn: ${bowlDesc}. Tủ lạnh còn ${cookedPateCount} phần Pate nhà làm.`,
     `Giấy nhớ trên tường: "${stickyText.slice(0, 120)}".`,
     `4 hoạt động gần nhất: ${recentLogs || 'Mới tạo phòng'}.`,
     `Ký ức thói quen: "${(roomData?.memorySummary || '').slice(0, 200)}".`,
