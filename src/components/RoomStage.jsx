@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { soundEngine } from '../services/soundEngine';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Gift, CloudRain, MessageSquareText } from 'lucide-react';
 import {
@@ -74,6 +75,7 @@ export default function RoomStage({
   const [typedDialogue, setTypedDialogue] = useState('');
 
   const stageRef = useRef(null);
+  const petComboRef = useRef({ count: 0, last: 0 });
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -105,9 +107,14 @@ export default function RoomStage({
       return;
     }
     let idx = 0;
+    let tickN = 0;
+    const isFresh = Date.now() - (aiBubble?.updatedAt || 0) < 6000;
+    if (isFresh) soundEngine.play('petVoice', { species: pet.type || 'cat', vol: 0.7 });
     setTypedDialogue(fullText.slice(0, 1));
     const interval = setInterval(() => {
       idx += 2;
+      tickN += 1;
+      if (isFresh && tickN % 2 === 0) soundEngine.play('typeBlip');
       if (idx >= fullText.length) {
         setTypedDialogue(fullText);
         clearInterval(interval);
@@ -178,6 +185,14 @@ export default function RoomStage({
     if (onBedByTap && !pet.isSleeping) {
       setOnBedByTap(false);
     }
+    const nowTs = Date.now();
+    const pc = petComboRef.current;
+    pc.count = nowTs - pc.last < 1200 ? pc.count + 1 : 0;
+    pc.last = nowTs;
+    soundEngine.play('petPat', { comboIndex: pc.count });
+    if (pc.count > 0 && pc.count % 4 === 0) {
+      soundEngine.play('petVoice', { species: pet.type || 'cat' });
+    }
     setIsPetted(true);
     setTimeout(() => setIsPetted(false), 650);
 
@@ -192,6 +207,7 @@ export default function RoomStage({
   };
 
   const handleTouchBed = () => {
+    soundEngine.play('tap');
     setOnBedByTap((prev) => !prev);
     spawnBurst(45, 52, onBedByTap ? 'Xuống thảm chơi!' : 'Lên giường nằm êm~', '🛏️');
   };
@@ -206,6 +222,7 @@ export default function RoomStage({
   };
 
   const handleTouchPlant = () => {
+    soundEngine.play('plantWiggle');
     setPlantWiggle(true);
     spawnBurst(16, 44, '', '🍃');
     setTimeout(() => setPlantWiggle(false), 650);
@@ -213,11 +230,14 @@ export default function RoomStage({
 
   const handleTouchDecor = () => {
     if (equipped.decor === 'decor_lamp' || !equipped.decor) {
+      soundEngine.play('lightSwitch');
       setLampOn((prev) => !prev);
       spawnBurst(82, 40, lampOn ? 'Tắt đèn' : 'Bật đèn', '💡');
     } else if (equipped.decor === 'decor_vinyl') {
+      soundEngine.play('vinyl');
       spawnBurst(82, 40, 'Lo-Fi Chill~', '🎵');
     } else if (equipped.decor === 'decor_teatable') {
+      soundEngine.play('teaSteam');
       spawnBurst(82, 44, 'Trà thơm ấm~', '🍵');
     } else {
       spawnBurst(82, 42, '', '✨');
@@ -226,6 +246,7 @@ export default function RoomStage({
 
   const handleTouchWallDecor = () => {
     if (!equipped.wallDecor || equipped.wallDecor === 'wdecor_fairy') {
+      soundEngine.play('lightSwitch');
       setFairyLightsOn((prev) => !prev);
       spawnBurst(50, 11, fairyLightsOn ? 'Tắt đèn dây' : 'Lung linh!', '✨');
     } else if (equipped.wallDecor === 'wdecor_clock') {
@@ -236,11 +257,13 @@ export default function RoomStage({
   };
 
   const handleTouchTrash = (trash) => {
+    soundEngine.play('sparkle');
     spawnBurst(trash.x, trash.y - 3, '+5 Xu', '✨');
     if (onCleanTrash) onCleanTrash(trash.id);
   };
 
   const handlePlayCoopBallClick = () => {
+    soundEngine.play('coin');
     setBallBounce(true);
     setTimeout(() => setBallBounce(false), 1400);
     if (onCoopPlayBall) onCoopPlayBall();

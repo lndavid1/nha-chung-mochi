@@ -14,6 +14,7 @@ import {
   ChevronUp,
   ChevronDown
 } from 'lucide-react';
+import { soundEngine } from '../../services/soundEngine';
 
 const INK = '#4A3525';
 const HORIZON_RATIO = 0.32;
@@ -189,6 +190,7 @@ export default function SubwayRunGame({
 
   const executeJump = useCallback((g) => {
     g.vy = JUMP_VELOCITY;
+    soundEngine.play('jump');
     g.rollTimer = 0;
     g.bufferedJumpUntil = 0;
     for (let i = 0; i < 8; i++) {
@@ -221,11 +223,13 @@ export default function SubwayRunGame({
       if (action === 'left') {
         if (g.targetLane > -1) {
           g.targetLane -= 1;
+          soundEngine.play('laneSwipe');
           g.laneTilt = -0.34;
         }
       } else if (action === 'right') {
         if (g.targetLane < 1) {
           g.targetLane += 1;
+          soundEngine.play('laneSwipe');
           g.laneTilt = 0.34;
         }
       } else if (action === 'up') {
@@ -240,6 +244,7 @@ export default function SubwayRunGame({
           // Fast-Drop tức thì xuống mặt đường và chuyển sang trượt ngay
           g.vy = FAST_DROP_VELOCITY;
         }
+        if (g.rollTimer <= 0) soundEngine.play('slide');
         g.rollTimer = ROLL_DURATION;
       }
     },
@@ -498,6 +503,7 @@ export default function SubwayRunGame({
       hasSubmittedRewardRef.current = true;
 
       g.phase = 'gameover';
+      soundEngine.play('crash');
       g.shakeTime = 0.35;
       g.shakeIntensity = 9;
 
@@ -1024,6 +1030,7 @@ export default function SubwayRunGame({
           g.partnerBannerZ -= zDelta;
           if (g.partnerBannerZ <= 0.05 && !g.passedPartner) {
             g.passedPartner = true;
+            soundEngine.play('passPartner');
             g.partnerToastTimer = 3.0;
             spawnBurstParticles(
               W * 0.5,
@@ -1057,15 +1064,24 @@ export default function SubwayRunGame({
             if (c.kind === 'coin') {
               g.coins += g.x2Timer > 0 ? 2 : 1;
               g.score += g.x2Timer > 0 ? 10 : 5;
+              {
+                const nowMs = performance.now();
+                g.coinChain = nowMs - (g.coinChainLast || 0) < 1500 ? (g.coinChain || 0) + 1 : 0;
+                g.coinChainLast = nowMs;
+                soundEngine.play('runCoin', { comboIndex: g.coinChain });
+              }
               spawnBurstParticles(p.x, p.y, ['#FFE082', '#FFFDF9'], 6);
             } else if (c.kind === 'magnet') {
               g.magnetTimer = MAGNET_DURATION;
+              soundEngine.play('powerUp');
               spawnBurstParticles(p.x, p.y, ['#FFB7C5', '#FFFDF9'], 12);
             } else if (c.kind === 'shield') {
               g.hasShield = true;
+              soundEngine.play('powerUp');
               spawnBurstParticles(p.x, p.y, ['#89CFF0', '#FFFDF9'], 12);
             } else if (c.kind === 'x2') {
               g.x2Timer = X2_DURATION;
+              soundEngine.play('powerUp');
               spawnBurstParticles(p.x, p.y, ['#88C9A1', '#FFE082'], 12);
             }
             return false;
@@ -1101,6 +1117,7 @@ export default function SubwayRunGame({
               if (g.hasShield) {
                 // Khiên bong bóng vỡ -> bất tử 1.6s + xóa toàn bộ vật cản vùng nguy hiểm (z < 0.4)
                 g.hasShield = false;
+                soundEngine.play('shieldBreak');
                 g.invincibleTimer = INVINCIBLE_DURATION;
                 g.shakeTime = 0.28;
                 g.shakeIntensity = 7;

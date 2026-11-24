@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
+import { soundEngine } from '../services/soundEngine';
 
 /**
  * Component iOS Native Bottom Sheet dùng chung cho toàn bộ các Modal
@@ -17,6 +18,13 @@ export default function BottomSheet({
   children,
   maxHeight = '84dvh'
 }) {
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (isOpen && !wasOpen.current) soundEngine.play('sheetOpen');
+    else if (!isOpen && wasOpen.current) soundEngine.play('sheetClose');
+    wasOpen.current = Boolean(isOpen);
+  }, [isOpen]);
+
   return (
     <AnimatePresence>
       {isOpen && (

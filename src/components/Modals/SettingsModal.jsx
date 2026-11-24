@@ -18,7 +18,10 @@ import {
   ChevronDown,
   ChevronUp,
   Send,
-  Server
+  Server,
+  Music,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import {
   getSavedGeminiKey,
@@ -44,6 +47,7 @@ import {
   sendTestPushToSelf
 } from '../../services/pushService';
 import BottomSheet from '../BottomSheet';
+import { soundEngine, useSoundSettings } from '../../services/soundEngine';
 
 export default function SettingsModal({
   isOpen,
@@ -59,6 +63,7 @@ export default function SettingsModal({
   onLeaveRoom
 }) {
   const [petNameInput, setPetNameInput] = useState('');
+  const snd = useSoundSettings();
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [syncKeyToRoom, setSyncKeyToRoom] = useState(false);
   const [report, setReport] = useState(() => getModelsStatusReport());
@@ -583,6 +588,97 @@ export default function SettingsModal({
               </form>
             )}
           </div>
+        </div>
+
+        {/* 2.8 Âm Thanh & Nhạc Nền */}
+        <div className="p-3.5 rounded-2xl bg-[#FFFDF9] border-2 border-[#4A3525] space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-xs font-black text-[#4A3525]">
+              <Music className="w-4 h-4 text-[#E87A4D]" />
+              <span>Âm Thanh &amp; Nhạc Nền</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => soundEngine.setSettings({ muted: !snd.muted })}
+              className={`px-2.5 py-1 rounded-xl border-[1.6px] border-[#4A3525] text-[11px] font-black flex items-center gap-1 active:scale-95 ${
+                snd.muted ? 'bg-[#FFB7C5]' : 'bg-[#88C9A1]'
+              }`}
+            >
+              {snd.muted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+              <span>{snd.muted ? 'Đang tắt tiếng' : 'Đang bật'}</span>
+            </button>
+          </div>
+
+          {[
+            { key: 'bgm', label: 'Nhạc nền (BGM)', en: snd.bgmEnabled, vol: snd.bgmVolume },
+            { key: 'sfx', label: 'Hiệu ứng (SFX)', en: snd.sfxEnabled, vol: snd.sfxVolume }
+          ].map((ch) => (
+            <div key={ch.key} className="space-y-1">
+              <label className="flex items-center justify-between text-[11px] font-black text-[#4A3525] cursor-pointer">
+                <span>{ch.label}</span>
+                <input
+                  type="checkbox"
+                  checked={ch.en}
+                  onChange={(e) => {
+                    soundEngine.setSettings({ [`${ch.key}Enabled`]: e.target.checked });
+                    if (ch.key === 'sfx' && e.target.checked) {
+                      setTimeout(() => soundEngine.play('coin'), 30);
+                    }
+                  }}
+                  className="rounded text-[#FF9B71] w-4 h-4"
+                />
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={ch.vol}
+                disabled={!ch.en}
+                onChange={(e) =>
+                  soundEngine.setSettings({ [`${ch.key}Volume`]: Number(e.target.value) })
+                }
+                onPointerUp={() => ch.key === 'sfx' && soundEngine.play('tap')}
+                className="w-full accent-[#FF9B71] disabled:opacity-40"
+              />
+            </div>
+          ))}
+
+          <div className="space-y-1">
+            <span className="text-[11px] font-black text-[#4A3525]">Chế độ nhạc nền</span>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                { id: 'auto', label: 'Tự động (Ngày/Đêm/Game)' },
+                { id: 'day', label: 'Luôn Lofi Ban Ngày' },
+                { id: 'night', label: 'Luôn Hộp Nhạc Ru Ngủ' },
+                { id: 'off', label: 'Tắt nhạc nền' }
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => {
+                    soundEngine.setSettings({ bgmMode: m.id });
+                    soundEngine.play('tap');
+                  }}
+                  className={`py-1.5 px-1.5 rounded-xl border-[1.6px] border-[#4A3525] text-[10.5px] font-black leading-tight ${
+                    snd.bgmMode === m.id ? 'bg-[#FFE082]' : 'bg-[#FFF8F0] text-[#7D6352]'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              soundEngine.play('petVoice', { species: roomData?.pet?.type || 'cat' })
+            }
+            className="tactile-btn w-full py-2 rounded-xl bg-[#FFB7C5] border-[1.8px] border-[#4A3525] text-[#4A3525] text-xs font-black"
+          >
+            Thử tiếng Bé kêu
+          </button>
         </div>
 
         {/* 3. Cấu hình Gemini API Key */}

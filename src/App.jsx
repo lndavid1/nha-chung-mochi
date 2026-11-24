@@ -19,7 +19,9 @@ import {
   Eye,
   EyeOff,
   Gamepad2,
-  BellRing
+  BellRing,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import Onboarding from './components/Onboarding';
 import RoomStage from './components/RoomStage';
@@ -55,6 +57,7 @@ import {
   askPetBrain,
   maybeBuildUpdatedMemorySummary
 } from './services/petBrain';
+import { soundEngine, useSoundSettings } from './services/soundEngine';
 import {
   notifyPartner,
   clearAppBadgeSafe,
@@ -132,6 +135,7 @@ export default function App() {
   );
 
   const welcomeBackCheckedRef = useRef(false);
+  const snd = useSoundSettings();
 
   // Phát hiện Safari iOS chưa chạy ở chế độ standalone
   useEffect(() => {
@@ -208,6 +212,18 @@ export default function App() {
   const isPartnerOnline = Boolean(partnerInfo?.online);
   const bothOnline = Boolean(session && isPartnerOnline);
 
+  // Đồng bộ bối cảnh nhạc nền: Ngày / Đêm (19h-6h hoặc thú đi ngủ) / Góc vui chơi & Mini-game
+  useEffect(() => {
+    const hour = new Date().getHours();
+    let nightByClock = hour >= 19 || hour < 6;
+    if (timeOverride === 'night') nightByClock = true;
+    else if (timeOverride === 'day' || timeOverride === 'sunset') nightByClock = false;
+    soundEngine.setGameContext({
+      isNight: nightByClock || Boolean(roomData?.pet?.isSleeping),
+      isArcade: Boolean(activeMiniGame) || activeModal === 'arcade'
+    });
+  }, [timeOverride, roomData?.pet?.isSleeping, activeMiniGame, activeModal]);
+
   const hasUnreadSticky = Boolean(
     roomData?.stickyNote?.updatedAt &&
       roomData.stickyNote.updatedAt > lastReadStickyTs &&
@@ -224,6 +240,7 @@ export default function App() {
     if (!roomData || !session) return;
     const remainingMin = getNudgeCooldownRemainingMin();
     if (remainingMin > 0) {
+      soundEngine.play('error');
       showToast(`Vừa gọi rồi, đợi thêm ${remainingMin} phút nữa nha!`);
       return;
     }
@@ -245,6 +262,7 @@ export default function App() {
     }
     if (res?.ok) {
       markNudgeSentNow();
+      soundEngine.play('nudge');
       showToast(`Đã rung chuông gọi ${partnerInfo?.name || 'người kia'} về nhà!`);
     } else {
       showToast('Không gửi được thông báo lúc này, kiểm tra lại Worker trong Cài đặt nhé!');
@@ -359,11 +377,13 @@ export default function App() {
     if (!roomData || !session) return;
     const currentCoins = roomData.coins ?? 0;
     if (currentCoins < food.price) {
+      soundEngine.play('error');
       showToast('Chưa đủ Xu chung rồi! Hãy chăm thú hoặc dọn phòng để nhận thêm Xu nhé.');
       return;
     }
 
     const now = Date.now();
+    soundEngine.play('eat');
     const bonus = evaluateCoopCareBonus(roomData, session.playerRole, 10);
     const nextCoins = currentCoins - food.price + bonus.earnedCoins;
 
@@ -426,6 +446,9 @@ export default function App() {
     if (!roomData || !session) return;
     const now = Date.now();
     const bonus = evaluateCoopCareBonus(roomData, session.playerRole, 8);
+    if (type === 'bath') soundEngine.play('bath');
+    else if (type === 'clean_all') soundEngine.play('sparkle');
+    else if (type === 'toggle_sleep' && !roomData.pet?.isSleeping) soundEngine.play('sleep');
     let actionDesc = '';
     const updates = {
       coins: (roomData.coins ?? 0) + bonus.earnedCoins,
@@ -520,6 +543,7 @@ export default function App() {
       'pet/lastUpdated': now
     });
 
+    soundEngine.play('coin');
     showToast('Cả hai cùng chơi tung bóng với bé! (+20 Xu chung)');
 
     const logEntry = {
@@ -551,7 +575,10 @@ export default function App() {
 
   const handleBuyAndEquip = async (item) => {
     if (!roomData || !session) return;
-    if ((roomData.coins ?? 0) < item.price) return;
+    if ((roomData.coins ?? 0) < item.price) {
+      soundEngine.play('error');
+      return;
+    }
 
     const now = Date.now();
     const nextCoins = (roomData.coins ?? 0) - item.price;
@@ -580,6 +607,7 @@ export default function App() {
     });
 
     setPreviewEquipped(null);
+    soundEngine.play('buy');
     showToast(`Đã mua và lắp "${item.name}" vào phòng!`);
   };
 
@@ -623,6 +651,7 @@ export default function App() {
       mysteryGift: giftPayload,
       logs: [logEntry, ...(roomData.logs || [])].slice(0, 20)
     });
+    soundEngine.play('buy');
     showToast('Đã đặt Hộp Quà Bất Ngờ giữa phòng cho người kia bóc!');
 
     notifyPartner(roomData, session.roomId, session.playerRole, {
@@ -657,6 +686,7 @@ export default function App() {
       'room/equipped': equipped,
       mysteryGift: null
     });
+    soundEngine.play('giftOpen');
 
     triggerPetAiReaction({
       snapshotRoom: {
@@ -674,6 +704,7 @@ export default function App() {
     const now = Date.now();
     setLastReadStickyTs(now);
     localStorage.setItem(LAST_READ_STICKY_KEY, String(now));
+    soundEngine.play('paper');
     setActiveModal('sticky');
   };
 
@@ -689,6 +720,7 @@ export default function App() {
     await updateRoomFields(session.roomId, { stickyNote });
     setLastReadStickyTs(now);
     localStorage.setItem(LAST_READ_STICKY_KEY, String(now));
+    soundEngine.play('paper');
     showToast('Đã ghim giấy nhớ mới lên bảng bần!');
 
     notifyPartner(roomData, session.roomId, session.playerRole, {
@@ -734,6 +766,7 @@ export default function App() {
       photoFrame: photoPayload,
       logs: [logEntry, ...(roomData.logs || [])].slice(0, 20)
     });
+    soundEngine.play('shutter');
     showToast('Đã cập nhật ảnh Polaroid trên tường!');
   };
 
@@ -1034,7 +1067,10 @@ export default function App() {
           onCoopPlayBall={handleCoopPlayBall}
           onCleanTrash={handleCleanSingleTrash}
           onOpenStickyNote={handleOpenStickyModal}
-          onOpenPhotoFrame={() => setActiveModal('photo')}
+          onOpenPhotoFrame={() => {
+            soundEngine.play('shutter');
+            setActiveModal('photo');
+          }}
           onOpenGift={() => setActiveModal('gift')}
           onOpenChat={() => setActiveModal('chat')}
           hasUnreadSticky={hasUnreadSticky}
@@ -1066,7 +1102,10 @@ export default function App() {
           </div>
         )}
 
-        <header className="flex items-center justify-between gap-2">
+        <header
+          className="flex items-center justify-between gap-2"
+          onClickCapture={() => soundEngine.play('tap')}
+        >
           {!isPhotoMode ? (
             <div className="pointer-events-auto cozy-glass rounded-full px-3 py-1.5 border-[2px] border-[#4A3525] flex items-center gap-2.5 shadow-sm">
               <span className="text-xs font-black text-[#4A3525] truncate max-w-[84px]">
@@ -1123,6 +1162,20 @@ export default function App() {
                 title={`Gọi ${partnerInfo?.name || 'người kia'} về nhà`}
               >
                 <BellRing className="w-4 h-4" />
+              </button>
+            )}
+
+            {!isPhotoMode && (
+              <button
+                type="button"
+                onClick={() => {
+                  soundEngine.setSettings({ muted: !snd.muted });
+                  if (snd.muted) soundEngine.play('tap');
+                }}
+                className="cozy-glass w-9 h-9 rounded-full border-[2px] border-[#4A3525] flex items-center justify-center text-[#4A3525] active:scale-90 transition-transform"
+                title={snd.muted ? 'Bật âm thanh' : 'Tắt toàn bộ âm thanh'}
+              >
+                {snd.muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               </button>
             )}
 
@@ -1333,7 +1386,10 @@ export default function App() {
           </div>
 
           {/* TACTILE BOTTOM DOCK */}
-          <nav className="pointer-events-auto cozy-glass rounded-[28px] p-1.5 border-[2.4px] border-[#4A3525] grid grid-cols-5 gap-1.5">
+          <nav
+            onClickCapture={() => soundEngine.play('tap')}
+            className="pointer-events-auto cozy-glass rounded-[28px] p-1.5 border-[2.4px] border-[#4A3525] grid grid-cols-5 gap-1.5"
+          >
             <button
               type="button"
               onClick={() =>

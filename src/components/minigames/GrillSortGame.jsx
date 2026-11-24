@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import {
@@ -15,6 +15,7 @@ import {
   X
 } from 'lucide-react';
 import { SkewerSvg, MysteryFoilSvg, BoosterIconSvg } from './grillAssets';
+import { soundEngine } from '../../services/soundEngine';
 import {
   generateGrillLevel,
   pickNextOrderType,
@@ -77,6 +78,47 @@ export default function GrillSortGame({
     }, 2200);
     return () => clearTimeout(t);
   }, [state.toast]);
+
+  // Âm thanh theo thay đổi trạng thái bàn chơi (so sánh state trước/sau, tránh phát trong updater)
+  const prevSndRef = useRef(null);
+  useEffect(() => {
+    const prev = prevSndRef.current;
+    prevSndRef.current = state;
+    if (!prev || prev.status !== 'playing') return;
+
+    const countTop = (s) =>
+      s.grills.reduce((n, g) => n + (g.active ? g.top.filter(Boolean).length : 0), 0);
+    const sum = (arr, fn) => arr.reduce((n, x) => n + fn(x), 0);
+    const boostersLeft = (s) => Object.values(s.boosters || {}).reduce((a, b) => a + b, 0);
+    const mysteryCount = (s) =>
+      s.grills.reduce((n, g) => n + g.top.filter((x) => x && x.mystery).length, 0);
+
+    if (state.status === 'won') {
+      soundEngine.play('win');
+      return;
+    }
+    if (state.status === 'lost') {
+      soundEngine.play('lose');
+      return;
+    }
+
+    if (boostersLeft(state) < boostersLeft(prev)) soundEngine.play('booster');
+    else if (countTop(state) < countTop(prev)) soundEngine.play('skewerPick');
+
+    if (state.completedOrders > prev.completedOrders) {
+      setTimeout(() => soundEngine.play('trayComplete'), 60);
+    }
+    if (sum(state.grills, (g) => g.ice || 0) < sum(prev.grills, (g) => g.ice || 0)) {
+      setTimeout(() => soundEngine.play('iceCrack'), 120);
+    }
+    if (sum(state.grills, (g) => g.chain || 0) < sum(prev.grills, (g) => g.chain || 0)) {
+      setTimeout(() => soundEngine.play('chainBreak'), 180);
+    }
+    if (sum(state.grills, (g) => (g.lidTarget ? 1 : 0)) < sum(prev.grills, (g) => (g.lidTarget ? 1 : 0))) {
+      setTimeout(() => soundEngine.play('lidOpen'), 240);
+    }
+    if (mysteryCount(state) < mysteryCount(prev)) soundEngine.play('foilUnwrap');
+  }, [state]);
 
   // Gom các xiên giống nhau đứng cạnh nhau trên 7 Đĩa Chờ
   const groupHoldingPlates = (plates) => {
@@ -269,6 +311,12 @@ export default function GrillSortGame({
 
   // Xử lý khi người chơi chạm vào 1 xiên trên bếp nướng
   const handleTapSkewer = (grillIdx, slotIdx) => {
+    {
+      const gr = state.grills[grillIdx];
+      if (state.status === 'playing' && gr && (gr.ice > 0 || gr.chain > 0 || gr.lidTarget)) {
+        soundEngine.play('error');
+      }
+    }
     setState((prev) => {
       if (prev.status !== 'playing') return prev;
       const grill = prev.grills[grillIdx];
