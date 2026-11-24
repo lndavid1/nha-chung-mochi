@@ -1,7 +1,84 @@
 import React from 'react';
 
 /**
- * Hệ thống Ánh Sáng Động 2.5D cho Căn Phòng (4 chế độ: Sáng, Hoàng Hôn, Đêm, Đi Ngủ)
+ * 1. Chùm tia nắng xiên từ cửa sổ (z-[15]) — nằm trên tường/cửa sổ nhưng dưới đồ nội thất & thú cưng
+ */
+export function SunbeamOverlay({ period = 'day', isSleeping = false }) {
+  if (isSleeping || period === 'night') return null;
+
+  const isSunset = period === 'sunset';
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[15] overflow-hidden select-none">
+      <svg
+        viewBox="0 0 400 800"
+        preserveAspectRatio="none"
+        className="absolute inset-0 w-full h-full"
+      >
+        <defs>
+          <linearGradient id="sunbeamMainGrad" x1="0" y1="0" x2="0.7" y2="1">
+            <stop
+              offset="0%"
+              stopColor={isSunset ? '#FFB085' : '#FFF6CC'}
+              stopOpacity={isSunset ? '0.36' : '0.40'}
+            />
+            <stop
+              offset="60%"
+              stopColor={isSunset ? '#FFB7C5' : '#FFE89E'}
+              stopOpacity="0.16"
+            />
+            <stop offset="100%" stopColor="#FFF8F0" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {/* Tia nắng đổ chéo từ cửa sổ (left 5% -> 39%, top 16% -> 38%) xuống vùng sàn trước-giữa */}
+        <polygon
+          points="24,140 150,140 315,610 95,610"
+          fill="url(#sunbeamMainGrad)"
+        />
+        <polygon
+          points="78,140 156,140 355,580 250,580"
+          fill="url(#sunbeamMainGrad)"
+          opacity="0.65"
+        />
+        {/* Vệt nắng ấm trên mặt sàn */}
+        <ellipse
+          cx="210"
+          cy="560"
+          rx="105"
+          ry="28"
+          fill={isSunset ? '#FFD1B8' : '#FFF4BD'}
+          fillOpacity="0.24"
+        />
+      </svg>
+
+      {/* Hạt bụi nắng lơ lửng bay chậm */}
+      {!isSunset &&
+        [
+          { left: '22%', top: '34%', delay: '0s', size: 4.5 },
+          { left: '36%', top: '44%', delay: '1.2s', size: 4 },
+          { left: '28%', top: '55%', delay: '2.4s', size: 5 },
+          { left: '44%', top: '50%', delay: '0.7s', size: 4 },
+          { left: '39%', top: '64%', delay: '1.8s', size: 4.5 }
+        ].map((p, idx) => (
+          <span
+            key={idx}
+            style={{
+              left: p.left,
+              top: p.top,
+              width: `${p.size}px`,
+              height: `${p.size}px`,
+              animationDelay: p.delay
+            }}
+            className="absolute rounded-full bg-[#FFF7C2] shadow-[0_0_8px_#FFE082] animate-dust"
+          />
+        ))}
+    </div>
+  );
+}
+
+/**
+ * 2. Lớp phủ ánh sáng Hoàng Hôn / Đêm / Đi Ngủ (z-[40])
+ * Nằm trên toàn bộ căn phòng & thú cưng (z-[30]), nhưng DƯỚI toàn bộ lớp UI sắc nét (z-[50]+)
  */
 export default function RoomLighting({
   period = 'day',
@@ -12,99 +89,28 @@ export default function RoomLighting({
 }) {
   const isNight = period === 'night';
   const isSunset = period === 'sunset';
-  const isDay = period === 'day' && !isSleeping;
 
   const hasFairyWallDecor =
     !equipped.wallDecor || equipped.wallDecor === 'wdecor_fairy';
   const hasFloorLamp = !equipped.decor || equipped.decor === 'decor_lamp';
 
+  if (period === 'day' && !isSleeping) return null;
+
   return (
-    <div className="pointer-events-none absolute inset-0 z-[24] overflow-hidden select-none">
-      {/* 1. BAN NGÀY: Chùm tia nắng xiên Volumetric Sunbeam từ cửa sổ trái xuống sàn */}
-      {isDay && (
-        <>
-          <svg
-            viewBox="0 0 400 600"
-            preserveAspectRatio="none"
-            className="absolute inset-0 w-full h-full"
-          >
-            <defs>
-              <linearGradient id="sunbeamGrad" x1="0" y1="0" x2="0.7" y2="1">
-                <stop offset="0%" stopColor="#FFF6CC" stopOpacity="0.38" />
-                <stop offset="55%" stopColor="#FFE89E" stopOpacity="0.16" />
-                <stop offset="100%" stopColor="#FFF8F0" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <polygon
-              points="26,110 128,110 305,500 85,500"
-              fill="url(#sunbeamGrad)"
-            />
-            <polygon
-              points="75,110 136,110 345,475 245,475"
-              fill="url(#sunbeamGrad)"
-              opacity="0.65"
-            />
-            <ellipse
-              cx="205"
-              cy="460"
-              rx="92"
-              ry="22"
-              fill="#FFF4BD"
-              fillOpacity="0.22"
-            />
-          </svg>
-
-          {/* Hạt bụi nắng lơ lửng */}
-          {[
-            { left: '24%', top: '30%', delay: '0s', size: 5 },
-            { left: '36%', top: '42%', delay: '1.2s', size: 4 },
-            { left: '29%', top: '54%', delay: '2.4s', size: 5.5 },
-            { left: '45%', top: '48%', delay: '0.7s', size: 4.5 },
-            { left: '38%', top: '64%', delay: '1.8s', size: 5 }
-          ].map((p, idx) => (
-            <span
-              key={idx}
-              style={{
-                left: p.left,
-                top: p.top,
-                width: `${p.size}px`,
-                height: `${p.size}px`,
-                animationDelay: p.delay
-              }}
-              className="absolute rounded-full bg-[#FFF7C2] shadow-[0_0_8px_#FFE082] animate-dust"
-            />
-          ))}
-        </>
-      )}
-
-      {/* 2. HOÀNG HÔN */}
+    <div className="pointer-events-none absolute inset-0 z-[40] overflow-hidden select-none">
+      {/* HOÀNG HÔN: Lớp phủ nắng chiều ấm áp */}
       {isSunset && !isSleeping && (
-        <>
-          <div
-            className="absolute inset-0 transition-opacity duration-700"
-            style={{
-              background:
-                'linear-gradient(160deg, rgba(255, 155, 113, 0.20) 0%, rgba(255, 183, 197, 0.15) 55%, rgba(186, 135, 175, 0.18) 100%)',
-              mixBlendMode: 'soft-light'
-            }}
-          />
-          <svg
-            viewBox="0 0 400 600"
-            preserveAspectRatio="none"
-            className="absolute inset-0 w-full h-full"
-          >
-            <defs>
-              <linearGradient id="sunsetBeam" x1="0" y1="0" x2="0.8" y2="1">
-                <stop offset="0%" stopColor="#FFB085" stopOpacity="0.32" />
-                <stop offset="100%" stopColor="#FFB7C5" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <polygon points="26,115 132,115 320,500 95,500" fill="url(#sunsetBeam)" />
-          </svg>
-        </>
+        <div
+          className="absolute inset-0 transition-opacity duration-700"
+          style={{
+            background:
+              'linear-gradient(160deg, rgba(255, 155, 113, 0.22) 0%, rgba(255, 183, 197, 0.16) 55%, rgba(186, 135, 175, 0.20) 100%)',
+            mixBlendMode: 'soft-light'
+          }}
+        />
       )}
 
-      {/* 3. BAN ĐÊM HOẶC TẮT ĐÈN ĐI NGỦ */}
+      {/* BAN ĐÊM HOẶC TẮT ĐÈN ĐI NGỦ: Bóng đêm dịu + Quầng sáng vàng ấm từ đèn */}
       {(isNight || isSleeping) && (
         <>
           <div
@@ -116,36 +122,39 @@ export default function RoomLighting({
             }}
           />
 
+          {/* Quầng sáng vàng ấm từ Đèn cây / Góc nội thất sau-phải */}
           {lampOn && !isSleeping && (
             <div
               className="absolute transition-opacity duration-500"
               style={{
-                right: '-6%',
-                bottom: '34%',
-                width: '250px',
-                height: '250px',
+                right: '-4%',
+                top: '28%',
+                width: '240px',
+                height: '240px',
                 background: hasFloorLamp
-                  ? 'radial-gradient(circle, rgba(255, 224, 130, 0.44) 0%, rgba(255, 185, 110, 0.16) 48%, transparent 74%)'
-                  : 'radial-gradient(circle, rgba(255, 224, 130, 0.25) 0%, transparent 70%)'
+                  ? 'radial-gradient(circle, rgba(255, 224, 130, 0.45) 0%, rgba(255, 185, 110, 0.16) 48%, transparent 74%)'
+                  : 'radial-gradient(circle, rgba(255, 224, 130, 0.24) 0%, transparent 70%)'
               }}
             />
           )}
 
+          {/* Quầng sáng lung linh từ Dây đèn Fairy Lights trên tường */}
           {fairyLightsOn && hasFairyWallDecor && !isSleeping && (
             <div
-              className="absolute left-1/2 -translate-x-1/2 top-[6%] w-72 h-32 transition-opacity duration-500"
+              className="absolute left-1/2 -translate-x-1/2 top-[5%] w-72 h-28 transition-opacity duration-500"
               style={{
                 background:
-                  'radial-gradient(ellipse at center, rgba(255, 230, 140, 0.36) 0%, rgba(255, 183, 197, 0.14) 52%, transparent 76%)'
+                  'radial-gradient(ellipse at center, rgba(255, 230, 140, 0.38) 0%, rgba(255, 183, 197, 0.14) 52%, transparent 76%)'
               }}
             />
           )}
 
+          {/* Ánh đèn ngủ dịu bên chiếc giường thú (tọa độ tâm giường x:45%, y:57%) */}
           <div
-            className="absolute left-[2%] bottom-[8%] w-52 h-40 transition-opacity duration-700"
+            className="absolute left-[22%] top-[44%] w-52 h-44 transition-opacity duration-700"
             style={{
               background: isSleeping
-                ? 'radial-gradient(circle, rgba(255, 224, 130, 0.40) 0%, rgba(255, 155, 113, 0.14) 50%, transparent 75%)'
+                ? 'radial-gradient(circle, rgba(255, 224, 130, 0.42) 0%, rgba(255, 155, 113, 0.15) 50%, transparent 75%)'
                 : 'radial-gradient(circle, rgba(255, 224, 130, 0.20) 0%, transparent 70%)'
             }}
           />

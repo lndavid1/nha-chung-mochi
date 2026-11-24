@@ -121,7 +121,7 @@ export default function DecoratorDrawer({
           style={{
             paddingBottom: 'max(env(safe-area-inset-bottom, 10px), 10px)'
           }}
-          className="fixed inset-x-0 bottom-0 z-40 max-w-md mx-auto bg-[#FFF8F0]/96 backdrop-blur-lg rounded-t-[30px] border-t-[2.5px] border-[#4A3525] shadow-[0_-10px_30px_rgba(74,53,37,0.18)] flex flex-col"
+          className="fixed inset-x-0 bottom-0 z-[65] max-w-[430px] mx-auto bg-[#FFF8F0]/96 backdrop-blur-lg rounded-t-[30px] border-t-[2.5px] border-[#4A3525] shadow-[0_-10px_30px_rgba(74,53,37,0.18)] flex flex-col"
         >
           {/* Thanh tiêu đề Studio + Ngân quỹ Xu + Chuyển Kho đồ */}
           <div className="px-4 pt-2.5 pb-1.5 flex items-center justify-between border-b border-[#4A3525]/10">

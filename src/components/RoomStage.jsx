@@ -15,8 +15,20 @@ import { PlantSvg } from './furniture/Plants';
 import { DecorFurnitureSvg } from './furniture/DecorFurniture';
 import { WallDecorSvg } from './furniture/WallDecor';
 import PetAvatar from './pet/PetAvatar';
-import RoomLighting from './RoomLighting';
+import RoomLighting, { SunbeamOverlay } from './RoomLighting';
 
+/**
+ * RoomStage — Hệ tọa độ khóa cứng 50% Tường / 50% Sàn (Chuẩn 390x844 iPhone)
+ * Thứ tự Z-Index chuẩn:
+ * - z-[0]:  Tường + Phào chỉ chân tường (tại mốc top: 50%) + Sàn
+ * - z-[10]: Đồ trên tường (wallDecor, window, photoFrame, stickyNote)
+ * - z-[15]: Chùm nắng xiên từ cửa sổ (SunbeamOverlay, pointer-events-none)
+ * - z-[20]: Thảm trải sàn (rug)
+ * - z-[25]: Đồ đứng sàn (plant, bed, decor) + Rác/Bụi + Hộp quà
+ * - z-[30]: Thú cưng (PetAvatar)
+ * - z-[40]: Lớp phủ ánh sáng ngày/hoàng hôn/đêm (RoomLighting, pointer-events-none)
+ * - z-[50]: Lớp UI sắc nét tách khỏi ánh sáng (SpeechBubble, Floating Particles, Co-op Ball, Hotspots)
+ */
 export default function RoomStage({
   roomData,
   previewEquipped = null,
@@ -26,6 +38,7 @@ export default function RoomStage({
   timeOverride = 'auto',
   bothOnline = false,
   isTrayOpen = false,
+  isPhotoMode = false,
   onPetTap,
   onCoopPlayBall,
   onCleanTrash,
@@ -43,12 +56,15 @@ export default function RoomStage({
   const [lampOn, setLampOn] = useState(true);
   const [fairyLightsOn, setFairyLightsOn] = useState(true);
   const [isPetted, setIsPetted] = useState(false);
+  const [onBedByTap, setOnBedByTap] = useState(false);
   const [nowDate, setNowDate] = useState(() => new Date());
 
-  // Tọa độ của thú cưng trong vùng sàn an toàn (không đè lên đồ vật khác)
+  // Tọa độ thú cưng theo hệ trục (x%, y% từ đỉnh top container)
+  // Vùng đi dạo hợp lệ trên sàn: x từ 22% -> 78%, y từ 66% -> 76%
+  // Khi lên giường ngủ: x = 45%, y = 57%
   const [petPos, setPetPos] = useState({
-    x: 54,
-    y: 13,
+    x: 50,
+    y: 71,
     facingLeft: false,
     isWalking: false
   });
@@ -78,7 +94,7 @@ export default function RoomStage({
   const activeEmotion = resolvePetEmotion(pet, bothOnline);
   const aiBubble = pet.aiBubble || null;
 
-  // Hiệu ứng gõ chữ (Typewriter)
+  // Hiệu ứng gõ chữ mượt (Typewriter) cho bong bóng thoại AI
   useEffect(() => {
     const fullText = aiBubble?.dialogue || '';
     if (!fullText) {
@@ -100,48 +116,48 @@ export default function RoomStage({
     return () => clearInterval(interval);
   }, [aiBubble?.dialogue, aiBubble?.updatedAt]);
 
-  // Chu kỳ sống tự nhiên:
-  // - Khi ngủ hoặc mệt (<25 energy): Đi về nằm gọn trong lòng chiếc giường (Góc dưới trái: x=18%, bottom=13%)
-  // - Khi thức: Tự đi dạo trên vùng thảm giữa phòng (x: 42% -> 68%, bottom: 11% -> 18%)
+  // Chu kỳ sống tự nhiên của Thú cưng:
+  // - Khi ngủ / energy < 25 / người chơi bấm vào giường -> đi về tâm giường (x: 45%, y: 57%)
+  // - Khi thức -> đi dạo tự do trên vùng sàn quanh thảm (x: 24% -> 76%, y: 66% -> 75%)
   useEffect(() => {
-    const shouldGoToBed = Boolean(pet.isSleeping || (pet.energy ?? 80) < 25);
+    const shouldGoToBed = Boolean(
+      pet.isSleeping || (pet.energy ?? 80) < 25 || onBedByTap
+    );
     if (shouldGoToBed) {
       setPetPos((prev) => ({
-        x: 18,
-        y: 13,
-        facingLeft: prev.x > 18,
+        x: 45,
+        y: 57,
+        facingLeft: prev.x > 45,
         isWalking: false
       }));
       return;
     }
 
-    // Nếu vừa thức dậy từ giường thì bước ra giữa thảm
+    // Nếu vừa rời giường thì bước xuống thảm
     setPetPos((prev) =>
-      prev.x < 30
-        ? { x: 54, y: 13, facingLeft: false, isWalking: false }
-        : prev
+      prev.y < 63 ? { x: 50, y: 71, facingLeft: false, isWalking: false } : prev
     );
 
     const walkTimer = setInterval(() => {
       setPetPos((prev) => {
-        const nextX = 42 + Math.floor(Math.random() * 26);
-        const nextY = 11 + Math.floor(Math.random() * 7);
+        const nextX = 24 + Math.floor(Math.random() * 52); // 24% -> 76%
+        const nextY = 66 + Math.floor(Math.random() * 9);  // 66% -> 75%
         const goingLeft = nextX < prev.x;
         return {
           x: nextX,
           y: nextY,
           facingLeft: goingLeft,
-          isWalking: Math.abs(nextX - prev.x) > 5
+          isWalking: Math.abs(nextX - prev.x) > 6
         };
       });
 
       setTimeout(() => {
         setPetPos((prev) => ({ ...prev, isWalking: false }));
-      }, 1600);
+      }, 1500);
     }, 9000);
 
     return () => clearInterval(walkTimer);
-  }, [pet.isSleeping, pet.energy]);
+  }, [pet.isSleeping, pet.energy, onBedByTap]);
 
   const spawnBurst = (xPercent, yPercent, label, icon = '✨') => {
     const id = Date.now() + Math.random();
@@ -156,17 +172,25 @@ export default function RoomStage({
 
   const handleTouchPet = (e) => {
     e.stopPropagation();
+    if (onBedByTap && !pet.isSleeping) {
+      setOnBedByTap(false);
+    }
     setIsPetted(true);
     setTimeout(() => setIsPetted(false), 650);
 
     const id = Date.now() + Math.random();
-    const offsetX = Math.floor(Math.random() * 50) - 25;
+    const offsetX = Math.floor(Math.random() * 48) - 24;
     setHearts((prev) => [...prev.slice(-6), { id, offsetX }]);
     setTimeout(() => {
       setHearts((prev) => prev.filter((h) => h.id !== id));
     }, 1050);
 
     if (onPetTap) onPetTap();
+  };
+
+  const handleTouchBed = () => {
+    setOnBedByTap((prev) => !prev);
+    spawnBurst(45, 52, onBedByTap ? 'Xuống thảm chơi!' : 'Lên giường nằm êm~', '🛏️');
   };
 
   const handleTouchWindow = () => {
@@ -180,36 +204,36 @@ export default function RoomStage({
 
   const handleTouchPlant = () => {
     setPlantWiggle(true);
-    spawnBurst(15, 45, '', '🍃');
+    spawnBurst(16, 44, '', '🍃');
     setTimeout(() => setPlantWiggle(false), 650);
   };
 
   const handleTouchDecor = () => {
     if (equipped.decor === 'decor_lamp' || !equipped.decor) {
       setLampOn((prev) => !prev);
-      spawnBurst(84, 42, lampOn ? 'Tắt đèn' : 'Bật đèn', '💡');
+      spawnBurst(82, 40, lampOn ? 'Tắt đèn' : 'Bật đèn', '💡');
     } else if (equipped.decor === 'decor_vinyl') {
-      spawnBurst(84, 42, 'Lo-Fi Chill~', '🎵');
+      spawnBurst(82, 40, 'Lo-Fi Chill~', '🎵');
     } else if (equipped.decor === 'decor_teatable') {
-      spawnBurst(84, 45, 'Trà thơm ấm~', '🍵');
+      spawnBurst(82, 44, 'Trà thơm ấm~', '🍵');
     } else {
-      spawnBurst(84, 44, '', '✨');
+      spawnBurst(82, 42, '', '✨');
     }
   };
 
   const handleTouchWallDecor = () => {
     if (!equipped.wallDecor || equipped.wallDecor === 'wdecor_fairy') {
       setFairyLightsOn((prev) => !prev);
-      spawnBurst(50, 14, fairyLightsOn ? 'Tắt đèn dây' : 'Lung linh!', '✨');
+      spawnBurst(50, 11, fairyLightsOn ? 'Tắt đèn dây' : 'Lung linh!', '✨');
     } else if (equipped.wallDecor === 'wdecor_clock') {
       handleTouchWindow();
     } else {
-      spawnBurst(50, 14, '', '🌿');
+      spawnBurst(50, 12, '', '🌿');
     }
   };
 
   const handleTouchTrash = (trash) => {
-    spawnBurst(trash.x, trash.y - 4, '+5 Xu', '✨');
+    spawnBurst(trash.x, trash.y - 3, '+5 Xu', '✨');
     if (onCleanTrash) onCleanTrash(trash.id);
   };
 
@@ -219,43 +243,68 @@ export default function RoomStage({
     if (onCoopPlayBall) onCoopPlayBall();
   };
 
-  const clampedBubbleLeft = Math.max(26, Math.min(74, petPos.x));
+  const isFairyWallDecor =
+    !equipped.wallDecor || equipped.wallDecor === 'wdecor_fairy';
+
+  // Dynamic Horizontal Clamping cho bong bóng thoại AI (chống tràn mép trái/phải iPhone 390px)
+  const bubbleCenterX = Math.min(Math.max(petPos.x, 30), 70);
+  // Vị trí mũi tên tam giác tương đối trong hộp thoại để luôn chỉ thẳng về phía đầu thú
+  const arrowOffsetPx = Math.max(-68, Math.min(68, (petPos.x - bubbleCenterX) * 3.4));
+  // Vị trí dọc bám ngay phía trên đầu thú (đỉnh đầu thú cách tâm petPos.y khoảng ~9% chiều cao)
+  const bubbleBottomPercent = Math.min(82, Math.max(22, 100 - (petPos.y - 10)));
 
   return (
     <div
       ref={stageRef}
       className="relative w-full h-full overflow-hidden select-none bg-[#FFF8F0]"
     >
-      {/* LỚP 1 (z-[1]): TƯỜNG NHÀ (Chiếm 56% phía trên) */}
-      <div className="absolute inset-x-0 top-0 h-[56%] z-[1]">
+      {/* ===================================================================== */}
+      {/* Z-[0]: TƯỜNG (top: 0% -> 50%) + PHÀO CHỈ (mốc 50%) + SÀN (50% -> 100%) */}
+      {/* ===================================================================== */}
+      <div className="absolute inset-x-0 top-0 h-[50%] z-[0]">
         <WallBackdrop wallId={equipped.wall} />
       </div>
-
-      {/* LỚP 2 (z-[1]): SÀN NHÀ (Chiếm 44% phía dưới) */}
-      <div className="absolute inset-x-0 bottom-0 h-[44%] z-[1]">
+      <div className="absolute inset-x-0 top-[50%] h-[50%] z-[0]">
         <FloorBackdrop floorId={equipped.floor} />
       </div>
 
-      {/* LỚP 3 (z-[6]): ĐỒ TREO TƯỜNG (Dây đèn / Đồng hồ / Kệ treo / Lịch - Ở chính giữa trên tường) */}
+      {/* ===================================================================== */}
+      {/* Z-[10]: KHU VỰC ĐỒ TRÊN TƯỜNG (top: 0% -> 50%)                        */}
+      {/* ===================================================================== */}
+
+      {/* 1. wallDecor (Dây đèn Fairy Lights hoặc Đồng hồ / Kệ treo / Lịch xé) */}
       <button
         type="button"
         onClick={handleTouchWallDecor}
-        className="absolute top-[10%] left-1/2 -translate-x-1/2 z-[6] w-40 h-14 active:scale-95 transition-transform focus:outline-none"
+        style={
+          isFairyWallDecor
+            ? { top: '7%', left: '12%', width: '76%' }
+            : { top: '11%', left: '44%', width: '22%' }
+        }
+        className="absolute z-[10] active:scale-95 transition-transform focus:outline-none"
         title="Chạm để tương tác đồ treo tường"
       >
-        <WallDecorSvg
-          wallDecorId={equipped.wallDecor}
-          lightsOn={fairyLightsOn}
-          nowDate={nowDate}
-        />
+        <div className={isFairyWallDecor ? 'w-full h-14' : 'w-full aspect-square'}>
+          <WallDecorSvg
+            wallDecorId={equipped.wallDecor}
+            lightsOn={fairyLightsOn}
+            nowDate={nowDate}
+          />
+        </div>
       </button>
 
-      {/* LỚP 4 (z-[6]): CỬA SỔ (Bên trái tường) */}
+      {/* 2. window (Cửa sổ - Cột Trái: top 16%, left 5%, width 34%, aspect 1/1.15) */}
       <button
         type="button"
         onClick={handleTouchWindow}
-        title="Chạm để xem giờ & bầu trời"
-        className="absolute top-[16%] left-[4%] z-[6] w-28 h-32 active:scale-95 transition-transform focus:outline-none"
+        style={{
+          top: '16%',
+          left: '5%',
+          width: '34%',
+          aspectRatio: '1 / 1.15'
+        }}
+        title="Chạm để xem giờ & thời tiết ngoài cửa sổ"
+        className="absolute z-[10] active:scale-95 transition-transform focus:outline-none"
       >
         <WindowSvg
           windowId={equipped.window}
@@ -264,106 +313,113 @@ export default function RoomStage({
         />
       </button>
 
-      {/* Toast thời gian nhỏ khi chạm cửa sổ */}
-      <AnimatePresence>
-        {windowToast && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.92 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="absolute top-[13%] left-4 z-[35] cozy-glass-dark text-[#FFF8F0] text-xs font-extrabold px-3.5 py-1.5 rounded-full"
-          >
-            {windowToast}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* LỚP 5 (z-[6]): KHUNG ẢNH POLAROID (Giữa tường, dưới dây đèn) */}
+      {/* 3. photoFrame (Khung ảnh Polaroid - Cột Giữa: top 23%, left 43%, width 23%, aspect 3/3.6) */}
       <button
         type="button"
         onClick={onOpenPhotoFrame}
-        className="absolute top-[22%] left-1/2 -translate-x-1/2 z-[6] flex flex-col items-center -rotate-2 hover:rotate-0 active:scale-95 transition-all focus:outline-none"
+        style={{
+          top: '23%',
+          left: '43%',
+          width: '23%',
+          aspectRatio: '3 / 3.6'
+        }}
+        className="absolute z-[10] -rotate-2 hover:rotate-0 active:scale-95 transition-all focus:outline-none"
       >
-        <div className="relative">
-          <span className="absolute -top-1.5 -left-1.5 z-20 w-6 h-2 bg-[#FFB7C5]/90 border border-[#4A3525]/40 rounded-sm -rotate-12" />
-          <span className="absolute -top-1.5 -right-1.5 z-20 w-6 h-2 bg-[#88C9A1]/90 border border-[#4A3525]/40 rounded-sm rotate-12" />
+        <div className="relative w-full h-full bg-[#FFFDF9] p-1.5 pb-2 rounded-xl border-[2.2px] border-[#4A3525] shadow-[0_5px_12px_rgba(74,53,37,0.14)] flex flex-col justify-between">
+          {/* 2 mẩu băng dính Washi Tape pastel */}
+          <span className="absolute -top-1.5 -left-1.5 z-20 w-5 h-2 bg-[#FFB7C5]/90 border border-[#4A3525]/40 rounded-sm -rotate-12" />
+          <span className="absolute -top-1.5 -right-1.5 z-20 w-5 h-2 bg-[#88C9A1]/90 border border-[#4A3525]/40 rounded-sm rotate-12" />
 
-          <div className="w-20 bg-[#FFFDF9] p-1.5 pb-3 rounded-xl border-[2.2px] border-[#4A3525] shadow-[0_5px_12px_rgba(74,53,37,0.15)]">
-            <div className="w-full aspect-square rounded-lg overflow-hidden border-[1.6px] border-[#4A3525] bg-[#FFF3E2]">
-              {photoFrame?.imageData ? (
-                <img
-                  src={photoFrame.imageData}
-                  alt={photoFrame.caption || 'Ảnh đôi'}
-                  className="w-full h-full object-cover"
+          <div className="w-full flex-1 min-h-0 rounded-lg overflow-hidden border-[1.6px] border-[#4A3525] bg-[#FFF3E2]">
+            {photoFrame?.imageData ? (
+              <img
+                src={photoFrame.imageData}
+                alt={photoFrame.caption || 'Ảnh đôi'}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <svg viewBox="0 0 80 80" className="w-full h-full">
+                <rect width="80" height="80" fill="#FFE8D6" />
+                <circle cx="28" cy="36" r="9" fill="#FF9B71" stroke="#4A3525" strokeWidth="2" />
+                <circle cx="52" cy="36" r="9" fill="#FFB7C5" stroke="#4A3525" strokeWidth="2" />
+                <path
+                  d="M40 26 C40 26 33 19 33 15 C33 12 37 10 40 14 C43 10 47 12 47 15 C47 19 40 26 40 26 Z"
+                  fill="#FF6B8B"
                 />
-              ) : (
-                <svg viewBox="0 0 80 80" className="w-full h-full">
-                  <rect width="80" height="80" fill="#FFE8D6" />
-                  <circle cx="28" cy="34" r="9" fill="#FF9B71" stroke="#4A3525" strokeWidth="2" />
-                  <circle cx="52" cy="34" r="9" fill="#FFB7C5" stroke="#4A3525" strokeWidth="2" />
-                  <path
-                    d="M40 24 C40 24 33 17 33 13 C33 10 37 8 40 12 C43 8 47 10 47 13 C47 17 40 24 40 24 Z"
-                    fill="#FF6B8B"
-                  />
-                  <text
-                    x="40"
-                    y="64"
-                    textAnchor="middle"
-                    fill="#4A3525"
-                    fontSize="9.5"
-                    fontWeight="800"
-                  >
-                    Ảnh đôi
-                  </text>
-                </svg>
-              )}
-            </div>
-            <p className="mt-1 text-[8.5px] font-extrabold text-[#4A3525] truncate text-center">
-              {photoFrame?.caption || 'Kỷ niệm'}
-            </p>
+              </svg>
+            )}
           </div>
+          <p className="mt-1 text-[10px] leading-tight font-extrabold text-[#4A3525] text-center truncate w-full">
+            {photoFrame?.imageData ? photoFrame.caption || 'Kỷ niệm' : 'Treo ảnh'}
+          </p>
         </div>
       </button>
 
-      {/* LỚP 6 (z-[6]): BẢNG BẦN CORKBOARD & GIẤY NHỚ (Bên phải tường) */}
+      {/* 4. stickyNote (Bảng bần & Giấy nhớ - Cột Phải: KHÓA CỨNG top 17%, right 5%, width 25%, max-width 105px, aspect 1/1.05) */}
       <button
         type="button"
         onClick={onOpenStickyNote}
-        className="absolute top-[18%] right-[4%] z-[6] w-22 h-24 rotate-1 hover:rotate-0 active:scale-95 transition-all focus:outline-none"
+        style={{
+          top: '17%',
+          right: '5%',
+          width: '25%',
+          maxWidth: '105px',
+          aspectRatio: '1 / 1.05'
+        }}
+        className="absolute z-[10] rotate-1 hover:rotate-0 active:scale-95 transition-all focus:outline-none"
       >
-        <div className="relative w-22 h-24 rounded-2xl bg-[#C9925B] p-1.5 border-[2.2px] border-[#4A3525] shadow-[0_5px_12px_rgba(74,53,37,0.15)]">
-          <div className="w-full h-full rounded-xl bg-[#DDA772] p-1 border border-[#4A3525]/40 flex flex-col justify-between relative">
-            <div className="w-full h-full rounded-lg bg-[#FFF3B0] p-1.5 border-[1.6px] border-[#4A3525] flex flex-col justify-between text-left shadow-sm">
-              <div className="mx-auto -mt-2 w-3 h-3 rounded-full bg-[#FF6B6B] border-[1.6px] border-[#4A3525]" />
+        <div className="relative w-full h-full rounded-2xl bg-[#C9925B] p-1 border-[2.2px] border-[#4A3525] shadow-[0_5px_12px_rgba(74,53,37,0.15)]">
+          <div className="w-full h-full rounded-xl bg-[#DDA772] p-1 border border-[#4A3525]/35 relative overflow-hidden">
+            <div className="w-full h-full rounded-lg bg-[#FFF3B0] p-1.5 border-[1.6px] border-[#4A3525] flex flex-col justify-between text-left overflow-hidden">
+              {/* Đinh ghim đỏ */}
+              <div className="mx-auto -mt-0.5 mb-0.5 w-2.5 h-2.5 rounded-full bg-[#FF6B6B] border-[1.4px] border-[#4A3525] shrink-0" />
               {stickyNote?.mode === 'drawing' && stickyNote?.drawingData ? (
                 <img
                   src={stickyNote.drawingData}
                   alt="Nét vẽ tay"
-                  className="w-full h-10 object-contain rounded bg-[#FFFDF9]/70"
+                  className="w-full flex-1 min-h-0 object-contain rounded bg-[#FFFDF9]/75"
                 />
               ) : (
-                <p className="text-[8.5px] font-extrabold text-[#4A3525] line-clamp-3 leading-tight mt-0.5">
-                  {stickyNote?.text || 'Chạm viết lời nhắn...'}
+                <p className="text-[9px] leading-tight font-extrabold text-[#4A3525] line-clamp-4 break-words overflow-hidden">
+                  {stickyNote?.text || 'Chạm để ghi chú...'}
                 </p>
               )}
-              <div className="text-[7.5px] font-black text-[#7D6352] truncate w-full text-right">
+              <span className="text-[7.5px] font-black text-[#7D6352] truncate w-full text-right shrink-0">
                 {stickyNote?.author || 'Giấy nhớ'}
-              </div>
+              </span>
             </div>
 
             {hasUnreadSticky && (
-              <span className="absolute -top-2 -right-2 w-3.5 h-3.5 rounded-full bg-[#FF5A5F] border-2 border-[#FFFDF9] animate-bounce shadow" />
+              <span className="absolute top-0.5 right-0.5 w-3 h-3 rounded-full bg-[#FF5A5F] border-[1.5px] border-[#FFFDF9] animate-bounce shadow" />
             )}
           </div>
         </div>
       </button>
 
-      {/* LỚP 7 (z-[8]): THẢM TRẢI SÀN (Nằm sát mặt sàn ở vùng trung tâm-phải, dưới thú cưng và đồ vật) */}
-      <div className="absolute left-[56%] -translate-x-1/2 bottom-[9%] z-[8] w-56 h-22 pointer-events-none">
+      {/* ===================================================================== */}
+      {/* Z-[15]: CHÙM TIA NẮNG XIÊN TỪ CỬA SỔ                                 */}
+      {/* ===================================================================== */}
+      <SunbeamOverlay period={timeInfo.period} isSleeping={pet.isSleeping} />
+
+      {/* ===================================================================== */}
+      {/* Z-[20]: THẢM TRẢI SÀN (Trung tâm sàn trước: left 50%, top 68%, w 66%) */}
+      {/* ===================================================================== */}
+      <div
+        style={{
+          left: '50%',
+          top: '68%',
+          width: '66%'
+        }}
+        className="absolute -translate-x-1/2 z-[20] pointer-events-none"
+      >
         <RugSvg rugId={equipped.rug} />
       </div>
 
-      {/* LỚP 8 (z-[11]): CÂY CẢNH GÓC PHÒNG (Đặt sát chân tường bên trái: bottom-[38%]) */}
+      {/* ===================================================================== */}
+      {/* Z-[25]: ĐỒ ĐỨNG SÀN (plant, bed, decor) + RÁC + HỘP QUÀ               */}
+      {/* ===================================================================== */}
+
+      {/* 5. plant (Cây cảnh - Góc Sau-Trái: left 4%, top 41%, width 24%) */}
       <motion.button
         type="button"
         onClick={handleTouchPlant}
@@ -373,18 +429,43 @@ export default function RoomStage({
             : { rotate: 0, scale: 1 }
         }
         transition={{ duration: 0.55 }}
-        className="absolute left-[4%] bottom-[38%] z-[11] w-22 h-28 focus:outline-none cursor-pointer"
+        style={{
+          left: '4%',
+          top: '41%',
+          width: '24%'
+        }}
+        className="absolute z-[25] focus:outline-none cursor-pointer"
         title="Chạm để rung rinh lá cây"
       >
         <PlantSvg plantId={equipped.plant} />
       </motion.button>
 
-      {/* LỚP 9 (z-[11]): NỘI THẤT LỚN (Đặt sát chân tường bên phải: bottom-[38%]) */}
+      {/* 6. bed (Giường thú - Góc Giữa-Trái trên sàn: left 29%, top 51%, width 32% — tách biệt hoàn toàn với thảm!) */}
+      <button
+        type="button"
+        onClick={handleTouchBed}
+        style={{
+          left: '29%',
+          top: '51%',
+          width: '32%'
+        }}
+        className="absolute z-[25] active:scale-95 transition-transform focus:outline-none cursor-pointer"
+        title="Chạm để gọi bé lên giường nghỉ ngơi"
+      >
+        <BedSvg bedId={equipped.bed} />
+      </button>
+
+      {/* 7. decor (Nội thất lớn - Góc Sau-Phải: right 4%, top 37%, width 31%) */}
       <motion.button
         type="button"
         onClick={handleTouchDecor}
-        whileTap={{ scale: 0.94 }}
-        className="absolute right-[4%] bottom-[38%] z-[11] w-24 h-30 focus:outline-none cursor-pointer"
+        whileTap={{ scale: 0.95 }}
+        style={{
+          right: '4%',
+          top: '37%',
+          width: '31%'
+        }}
+        className="absolute z-[25] focus:outline-none cursor-pointer"
         title="Chạm để bật/tắt đèn hoặc tương tác nội thất"
       >
         <DecorFurnitureSvg
@@ -394,12 +475,7 @@ export default function RoomStage({
         />
       </motion.button>
 
-      {/* LỚP 10 (z-[12]): GIƯỜNG / Ổ THÚ CƯNG (Đặt ở góc dưới trái sàn: bottom-[9%], tách biệt hoàn toàn với Chậu cây ở bottom-[38%]) */}
-      <div className="absolute left-[4%] bottom-[9%] z-[12] w-30 h-22 pointer-events-none">
-        <BedSvg bedId={equipped.bed} />
-      </div>
-
-      {/* LỚP 11 (z-[16]): HỘP QUÀ BẤT NGỜ (Góc dưới phải sàn) */}
+      {/* Hộp quà bất ngờ (Mystery Gift) đặt gọn bên phải sàn trước */}
       <AnimatePresence>
         {mysteryGift && (
           <motion.button
@@ -409,25 +485,26 @@ export default function RoomStage({
             exit={{ scale: 0 }}
             transition={{ duration: 0.5 }}
             onClick={onOpenGift}
-            className="absolute right-[5%] bottom-[10%] z-[16] flex flex-col items-center active:scale-90"
+            style={{ right: '5%', top: '67%' }}
+            className="absolute z-[25] flex flex-col items-center active:scale-90"
           >
-            <div className="relative w-14 h-14 rounded-2xl bg-[#FF9B71] border-[2.4px] border-[#4A3525] shadow-md flex items-center justify-center">
+            <div className="relative w-13 h-13 rounded-2xl bg-[#FF9B71] border-[2.4px] border-[#4A3525] shadow-md flex items-center justify-center p-2.5">
               <Gift className="w-7 h-7 text-[#FFFDF9]" />
               <span className="absolute -top-2 -right-2 px-1.5 py-0.2 rounded-full bg-[#FFE082] border-[1.6px] border-[#4A3525] text-[#4A3525] text-[8.5px] font-black shadow">
                 QUÀ!
               </span>
             </div>
-            <span className="mt-1 px-2 py-0.5 rounded-full bg-[#4A3525] text-[#FFF8F0] text-[9.5px] font-extrabold shadow">
+            <span className="mt-1 px-2 py-0.5 rounded-full bg-[#4A3525] text-[#FFF8F0] text-[9px] font-extrabold shadow">
               Từ {mysteryGift.senderName}
             </span>
           </motion.button>
         )}
       </AnimatePresence>
 
-      {/* LỚP 12 (z-[15]): CỤC RÁC / BỤI TRÊN SÀN (Gói gọn trong vùng sàn hợp lệ 64% -> 82% top) */}
+      {/* Cục rác / bụi trên sàn (giới hạn trong vùng sàn trống top: 68% -> 78%) */}
       {trashList.map((trash) => {
-        const safeTop = Math.max(64, Math.min(82, trash.y));
-        const safeLeft = Math.max(36, Math.min(76, trash.x));
+        const safeTop = Math.max(68, Math.min(78, trash.y));
+        const safeLeft = Math.max(20, Math.min(80, trash.x));
         return (
           <motion.button
             key={trash.id}
@@ -437,7 +514,7 @@ export default function RoomStage({
             whileTap={{ scale: 1.35 }}
             onClick={() => handleTouchTrash({ ...trash, x: safeLeft, y: safeTop })}
             style={{ left: `${safeLeft}%`, top: `${safeTop}%` }}
-            className="absolute z-[15] -translate-x-1/2 -translate-y-1/2 focus:outline-none"
+            className="absolute z-[25] -translate-x-1/2 -translate-y-1/2 focus:outline-none"
             title="Chạm để dọn sạch (+5 Xu)"
           >
             <div className="relative w-9 h-9 flex items-center justify-center">
@@ -458,7 +535,7 @@ export default function RoomStage({
                   </>
                 )}
               </svg>
-              <span className="absolute -top-2 px-1 py-0.1 rounded-full bg-[#88C9A1] border border-[#4A3525] text-[#4A3525] text-[8px] font-black shadow-sm">
+              <span className="absolute -top-2 px-1 rounded-full bg-[#88C9A1] border border-[#4A3525] text-[#4A3525] text-[8px] font-black shadow-sm">
                 +5 xu
               </span>
             </div>
@@ -466,19 +543,21 @@ export default function RoomStage({
         );
       })}
 
-      {/* LỚP 13 (z-[20]): THÚ CƯNG SỐNG ĐỘNG (Luôn đứng trên thảm z-[8] và giường z-[12]) */}
+      {/* ===================================================================== */}
+      {/* Z-[30]: THÚ CƯNG SỐNG ĐỘNG (PetAvatar)                                */}
+      {/* ===================================================================== */}
       <motion.div
         animate={{
           left: `${petPos.x}%`,
-          bottom: `${petPos.y}%`
+          top: `${petPos.y}%`
         }}
         transition={{
-          duration: 1.6,
+          duration: 1.5,
           ease: 'easeInOut'
         }}
-        className="absolute -translate-x-1/2 z-[20] flex flex-col items-center"
+        className="absolute -translate-x-1/2 -translate-y-1/2 z-[30] flex flex-col items-center"
       >
-        {/* Nhãn trạng thái nhỏ gọn ngay trên đỉnh đầu thú (chỉ hiện 1 nhãn ưu tiên cao nhất để không bao giờ chồng nhau) */}
+        {/* Nhãn cảm xúc nhỏ gọn (Zzz / Đói / Dỗi) */}
         {activeEmotion === 'sulky' ? (
           <div className="mb-0.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#4A3525] text-[#FFF8F0] text-[9.5px] font-extrabold animate-bounce shadow">
             <CloudRain className="w-3 h-3 text-[#89CFF0]" />
@@ -531,7 +610,7 @@ export default function RoomStage({
               }}
               exit={{ opacity: 0 }}
               transition={{ duration: 1.3 }}
-              className="absolute -top-6 z-[25]"
+              className="absolute -top-6 z-[35]"
             >
               <svg viewBox="0 0 36 36" className="w-7 h-7">
                 <circle cx="18" cy="18" r="14" fill="#FF9B71" stroke="#4A3525" strokeWidth="2.3" />
@@ -560,7 +639,9 @@ export default function RoomStage({
         </button>
       </motion.div>
 
-      {/* LỚP 14 (z-[24]): HỆ THỐNG ÁNH SÁNG ĐỘNG 2.5D */}
+      {/* ===================================================================== */}
+      {/* Z-[40]: LỚP PHỦ ÁNH SÁNG NGÀY / HOÀNG HÔN / ĐÊM (RoomLighting)        */}
+      {/* ===================================================================== */}
       <RoomLighting
         period={timeInfo.period}
         isSleeping={pet.isSleeping}
@@ -569,46 +650,75 @@ export default function RoomStage({
         equipped={equipped}
       />
 
-      {/* LỚP 15 (z-[26]): BONG BÓNG THOẠI AI CỦA PET (Tự ẩn khi đang mở khay thức ăn/chăm sóc hoặc chế độ trang trí để không đè giao diện) */}
-      {aiBubble?.dialogue && !isDecoratorMode && !isTrayOpen && (
+      {/* ===================================================================== */}
+      {/* Z-[50]: LỚP UI SẮC NÉT TÁCH KHỎI LỚP LỌC ÁNH SÁNG (Lighting Isolation)*/}
+      {/* ===================================================================== */}
+
+      {/* Toast thời gian khi chạm cửa sổ */}
+      <AnimatePresence>
+        {windowToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="absolute top-[13%] left-4 z-[50] cozy-glass-dark text-[#FFF8F0] text-xs font-extrabold px-3.5 py-1.5 rounded-full"
+          >
+            {windowToast}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* BONG BÓNG THOẠI AI — Bám sát ngay trên đầu thú, tự clamping ngang không tràn mép, sáng rõ 100% */}
+      {aiBubble?.dialogue && !isDecoratorMode && !isTrayOpen && !isPhotoMode && (
         <motion.div
           key={aiBubble.updatedAt || aiBubble.dialogue}
-          initial={{ opacity: 0, y: 6, scale: 0.94 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          style={{
-            left: `${clampedBubbleLeft}%`,
-            bottom: `${Math.min(46, petPos.y + 27)}%`
+          initial={{ opacity: 0, scale: 0.92 }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+            left: `${bubbleCenterX}%`,
+            bottom: `${bubbleBottomPercent}%`
           }}
-          className="absolute -translate-x-1/2 z-[26] w-[80%] max-w-[275px] bg-[#FFFDF9]/96 backdrop-blur-md rounded-2xl px-3 py-2 shadow-[0_6px_18px_rgba(74,53,37,0.14)] border-[2px] border-[#4A3525]"
+          transition={{ duration: 0.45, ease: 'easeOut' }}
+          className="absolute -translate-x-1/2 z-[50] max-w-[230px] w-max bg-[#FFFDF9]/95 text-[#4A3525] border-2 border-[#4A3525]/85 rounded-2xl px-3 py-2 shadow-lg"
         >
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-[11.5px] font-extrabold text-[#4A3525] leading-snug line-clamp-2">
+          <div className="flex items-start gap-2">
+            <p className="text-[11.5px] font-extrabold text-[#4A3525] leading-snug whitespace-normal break-words">
               {typedDialogue}
             </p>
             <button
               type="button"
               onClick={onOpenChat}
-              className="p-1 rounded-lg bg-[#FFF3E2] border border-[#4A3525]/30 text-[#4A3525] shrink-0 active:scale-90"
+              className="p-1 rounded-lg bg-[#FFF3E2] border border-[#4A3525]/35 text-[#4A3525] shrink-0 active:scale-90 mt-0.5"
               title="Mở khung trò chuyện với bé"
             >
               <MessageSquareText className="w-3.5 h-3.5" />
             </button>
           </div>
-          <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-3 h-3 bg-[#FFFDF9] border-r-[2px] border-b-[2px] border-[#4A3525] rotate-45" />
+          {/* Mũi tên tam giác luôn hướng thẳng xuống đầu thú cưng */}
+          <div
+            style={{
+              left: `calc(50% + ${arrowOffsetPx}px)`
+            }}
+            className="absolute -translate-x-1/2 -bottom-[7px] w-3 h-3 bg-[#FFFDF9] border-r-2 border-b-2 border-[#4A3525]/85 rotate-45"
+          />
         </motion.div>
       )}
 
-      {/* LỚP 16 (z-[28]): NÚT TƯƠNG TÁC ĐÔI CO-OP KHI CẢ 2 CÙNG ONLINE (Tự ẩn khi đang mở khay thức ăn/chăm sóc) */}
-      {bothOnline && !isDecoratorMode && !isTrayOpen && (
+      {/* Nút Co-op "Cùng chơi tung bóng (+20 Xu)" đặt gọn ngay trên cụm Bottom Dock */}
+      {bothOnline && !isDecoratorMode && !isTrayOpen && !isPhotoMode && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="absolute left-1/2 -translate-x-1/2 bottom-2 z-[28]"
+          style={{
+            bottom: 'calc(max(env(safe-area-inset-bottom, 10px), 10px) + 140px)'
+          }}
+          className="absolute left-1/2 -translate-x-1/2 z-[50]"
         >
           <button
             type="button"
             onClick={handlePlayCoopBallClick}
-            className="tactile-btn flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#FF9B71] border-2 border-[#4A3525] text-[#4A3525] text-[11px] font-black shadow-md whitespace-nowrap"
+            className="tactile-btn flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#FF9B71] border-2 border-[#4A3525] text-[#4A3525] text-[11.5px] font-black shadow-lg whitespace-nowrap"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Cùng chơi tung bóng (+20 Xu)</span>
@@ -616,7 +726,7 @@ export default function RoomStage({
         </motion.div>
       )}
 
-      {/* LỚP 17 (z-[30]): HIỆU ỨNG HẠT NỔ & CHỮ NỔI (+5 Xu, Nốt nhạc, Lá bay) */}
+      {/* Hiệu ứng hạt nổi & chữ nổi (+5 Xu, Lá bay, Nốt nhạc) */}
       <AnimatePresence>
         {floatingBursts.map((b) => (
           <motion.div
@@ -626,7 +736,7 @@ export default function RoomStage({
             exit={{ opacity: 0 }}
             transition={{ duration: 1.05, ease: 'easeOut' }}
             style={{ left: `${b.x}%`, top: `${b.y}%` }}
-            className="pointer-events-none absolute z-[30] -translate-x-1/2 flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#FFFDF9]/95 border-[1.8px] border-[#4A3525] shadow-md text-xs font-black text-[#4A3525]"
+            className="pointer-events-none absolute z-[50] -translate-x-1/2 flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#FFFDF9]/95 border-[1.8px] border-[#4A3525] shadow-md text-xs font-black text-[#4A3525]"
           >
             <span>{b.icon}</span>
             {b.label && <span>{b.label}</span>}
@@ -634,14 +744,14 @@ export default function RoomStage({
         ))}
       </AnimatePresence>
 
-      {/* LỚP 18 (z-[32]): CHẤM NEO SLOT HOTSPOTS KHI BẬT LIVE DECORATOR STUDIO */}
+      {/* Chấm neo Slot Hotspots khi bật Live Decorator Studio */}
       <AnimatePresence>
         {isDecoratorMode && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[32] pointer-events-none"
+            className="absolute inset-0 z-[50] pointer-events-none"
           >
             {ROOM_SLOTS.map((slot) => {
               const isSelected = activeDecoratorSlot === slot.id;
@@ -659,7 +769,7 @@ export default function RoomStage({
                   className={`pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 px-2.5 py-1 rounded-full border-2 border-[#4A3525] transition-all shadow-md ${
                     isSelected
                       ? 'bg-[#FF9B71] text-[#4A3525] scale-110 ring-4 ring-[#FFE082]/70'
-                      : 'bg-[#FFFDF9]/92 text-[#4A3525] hover:scale-105'
+                      : 'bg-[#FFFDF9]/95 text-[#4A3525] hover:scale-105'
                   }`}
                 >
                   <span

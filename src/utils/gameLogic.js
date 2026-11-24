@@ -68,17 +68,17 @@ export const FOOD_CATALOG = [
   }
 ];
 
-// Danh sách các Slot hiển thị trong Live Decorator Studio (kèm tọa độ Hotspot trên phòng)
+// Danh sách các Slot hiển thị trong Live Decorator Studio (kèm tọa độ Hotspot khớp chính xác hệ tọa độ khóa cứng)
 export const ROOM_SLOTS = [
-  { id: 'wall', label: 'Tường nhà', hotspot: { x: 26, y: 18 } },
-  { id: 'floor', label: 'Sàn nhà', hotspot: { x: 74, y: 86 } },
-  { id: 'window', label: 'Cửa sổ', hotspot: { x: 19, y: 33 } },
-  { id: 'bed', label: 'Giường thú', hotspot: { x: 22, y: 74 } },
-  { id: 'rug', label: 'Thảm sàn', hotspot: { x: 52, y: 78 } },
-  { id: 'plant', label: 'Cây cảnh', hotspot: { x: 16, y: 56 } },
-  { id: 'decor', label: 'Nội thất', hotspot: { x: 82, y: 58 } },
-  { id: 'wallDecor', label: 'Treo tường', hotspot: { x: 52, y: 16 } },
-  { id: 'accessory', label: 'Phụ kiện thú', hotspot: { x: 52, y: 63 } }
+  { id: 'wall', label: 'Tường nhà', hotspot: { x: 22, y: 12 } },
+  { id: 'floor', label: 'Sàn nhà', hotspot: { x: 84, y: 78 } },
+  { id: 'window', label: 'Cửa sổ', hotspot: { x: 22, y: 26 } },
+  { id: 'bed', label: 'Giường thú', hotspot: { x: 45, y: 58 } },
+  { id: 'rug', label: 'Thảm sàn', hotspot: { x: 50, y: 74 } },
+  { id: 'plant', label: 'Cây cảnh', hotspot: { x: 16, y: 50 } },
+  { id: 'decor', label: 'Nội thất', hotspot: { x: 80, y: 49 } },
+  { id: 'wallDecor', label: 'Treo tường', hotspot: { x: 52, y: 12 } },
+  { id: 'accessory', label: 'Phụ kiện thú', hotspot: { x: 50, y: 67 } }
 ];
 
 export const FURNITURE_CATALOG = {
