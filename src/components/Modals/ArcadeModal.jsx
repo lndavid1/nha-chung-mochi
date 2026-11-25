@@ -4,12 +4,12 @@ import BottomSheet from '../BottomSheet';
 import { SkewerSvg } from '../minigames/grillAssets';
 import { MartIconSvg } from '../minigames/supermarket/supermarketAssets';
 import {
-  normalizeSupermarket,
-  computeIncomePerSec,
-  computeOfflineEarnings,
-  getMartTierInfo,
-  formatCash
-} from '../minigames/supermarket/supermarketData';
+  BRANCHES,
+  normalizeTycoonState,
+  estimateIncomePerMin,
+  computeTycoonOfflineEarnings,
+  formatMoney
+} from '../minigames/supermarket/tycoonConfig';
 
 export const ARCADE_DAILY_CAP = 150;
 
@@ -35,11 +35,11 @@ export default function ArcadeModal({
   const gP2 = grillData.player2 || { maxLevel: 0, bestScore: 0 };
   const sharedOrdersCleared = Number(grillData.sharedOrdersCleared || 0);
 
-  const mart = normalizeSupermarket(roomData?.minigames?.supermarket);
-  const martIncomePerSec = computeIncomePerSec(mart);
-  const martTier = getMartTierInfo(mart.stalls);
-  const martOffline = computeOfflineEarnings(mart);
-  const hasOfflineReady = martOffline.elapsedSec >= 120 && martOffline.earned > 0;
+  const tycoon = normalizeTycoonState(roomData?.minigames?.supermarketTycoon);
+  const tycoonPerMin = estimateIncomePerMin(tycoon);
+  const tycoonBranch = BRANCHES[tycoon.branchIndex || 0] || BRANCHES[0];
+  const tycoonOffline = computeTycoonOfflineEarnings(tycoon);
+  const hasOfflineReady = tycoonOffline.elapsedSec >= 120 && tycoonOffline.earned > 0;
 
   const remainingCap = Math.max(0, ARCADE_DAILY_CAP - dailyEarnedCoins);
 
@@ -101,10 +101,10 @@ export default function ArcadeModal({
 
             <div className="p-2.5 rounded-2xl bg-[#FFFDF9] border-[1.8px] border-[#4A3525] flex items-center justify-between text-[11px] font-black text-[#4A3525]">
               <span className="truncate">
-                Cấp: <strong className="text-[#E87A4D]">{martTier.title}</strong>
+                Chi nhánh: <strong className="text-[#E87A4D]">{tycoonBranch.name}</strong>
               </span>
               <span className="text-[#5EA87A] tabular-nums shrink-0">
-                Đang thu: +${formatCash(martIncomePerSec)}/giây
+                +${formatMoney(tycoonPerMin)}/phút
               </span>
             </div>
 
@@ -112,7 +112,7 @@ export default function ArcadeModal({
               <div className="text-[10.5px] font-extrabold text-[#E85D75] flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>
-                  Kho tiền ngoại tuyến đã tích +${formatCash(martOffline.earned)} chờ thu!
+                  Kho tiền ngoại tuyến đã tích +${formatMoney(tycoonOffline.earned)} chờ thu!
                 </span>
               </div>
             )}

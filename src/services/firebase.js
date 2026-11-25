@@ -427,14 +427,14 @@ export function updatePlayerCurrentRoom(roomId, playerRole, currentRoom) {
   }).catch(() => {});
 }
 
-// Ghi nhận trạng thái đang trực Siêu Thị Mochi (kèm onDisconnect().set(false) cho Ca Trực Đôi x2)
+// Ghi nhận trạng thái đang trực Siêu Thị Mochi Tycoon (kèm onDisconnect().set(false) cho Ca Trực Đôi x2)
 export function setupMartPresence(roomId, playerRole) {
   if (!roomId || !playerRole) return () => {};
   const { db, mode } = initFirebaseClient();
   const cleanId = roomId.trim().toUpperCase();
 
   if (mode === 'firebase' && db) {
-    const martRef = ref(db, `rooms/${cleanId}/minigames/supermarket/activeInMart/${playerRole}`);
+    const martRef = ref(db, `rooms/${cleanId}/minigames/supermarketTycoon/activeInMart/${playerRole}`);
     onDisconnect(martRef).set(false).catch(() => {});
     set(martRef, true).catch(() => {});
 
@@ -444,12 +444,12 @@ export function setupMartPresence(roomId, playerRole) {
   }
 
   updateRoomFields(cleanId, {
-    [`minigames/supermarket/activeInMart/${playerRole}`]: true
+    [`minigames/supermarketTycoon/activeInMart/${playerRole}`]: true
   }).catch(() => {});
 
   return () => {
     updateRoomFields(cleanId, {
-      [`minigames/supermarket/activeInMart/${playerRole}`]: false
+      [`minigames/supermarketTycoon/activeInMart/${playerRole}`]: false
     }).catch(() => {});
   };
 }

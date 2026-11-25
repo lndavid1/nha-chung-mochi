@@ -602,6 +602,14 @@ const SFX = {
   vipBell: (t) => {
     chime(t, 1046.5, 0.18, 0.55);
     chime(t + 0.18, 783.99, 0.18, 0.75);
+  },
+  buildComplete: (t) => {
+    noise(t, { dur: 0.08, fc: 1400, q: 0.9, vol: 0.18 });
+    arp(t + 0.04, [392.0, 523.25, 659.25, 783.99, 1046.5], 0.06, {
+      vol: 0.17,
+      dur: 0.5,
+      type: 'triangle'
+    });
   }
 };
 

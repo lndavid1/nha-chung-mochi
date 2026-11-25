@@ -42,7 +42,7 @@ import CookingGameModal from './components/Modals/CookingGameModal';
 import ServeBowlModal from './components/Modals/ServeBowlModal';
 import SubwayRunGame from './components/minigames/SubwayRunGame';
 import GrillSortGame from './components/minigames/GrillSortGame';
-import SupermarketIdleGame from './components/minigames/supermarket/SupermarketIdleGame';
+import SupermarketTycoonGame from './components/minigames/supermarket/SupermarketTycoonGame';
 import DevCalibratorBar from './components/DevCalibratorBar';
 import { loadMergedPetAnchors } from './data/petAnchors';
 import { normalizeFridge } from './data/cookingData';
@@ -1995,14 +1995,13 @@ export default function App() {
         />
       )}
 
-      {/* MINI-GAME 3: SIÊU THỊ MOCHI (CO-OP IDLE TYCOON) */}
+      {/* MINI-GAME 3: SIÊU THỊ MOCHI TYCOON (ISOMETRIC 2.5D CODIGAMES) */}
       {activeMiniGame === 'supermarket' && (
-        <SupermarketIdleGame
+        <SupermarketTycoonGame
           roomId={session.roomId}
           roomData={roomData}
           playerRole={session.playerRole}
           playerName={session.playerName}
-          partnerName={partnerInfo?.name || 'Người kia'}
           onExit={() => setActiveMiniGame(null)}
         />
       )}
