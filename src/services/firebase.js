@@ -427,6 +427,33 @@ export function updatePlayerCurrentRoom(roomId, playerRole, currentRoom) {
   }).catch(() => {});
 }
 
+// Ghi nhận trạng thái đang trực Siêu Thị Mochi (kèm onDisconnect().set(false) cho Ca Trực Đôi x2)
+export function setupMartPresence(roomId, playerRole) {
+  if (!roomId || !playerRole) return () => {};
+  const { db, mode } = initFirebaseClient();
+  const cleanId = roomId.trim().toUpperCase();
+
+  if (mode === 'firebase' && db) {
+    const martRef = ref(db, `rooms/${cleanId}/minigames/supermarket/activeInMart/${playerRole}`);
+    onDisconnect(martRef).set(false).catch(() => {});
+    set(martRef, true).catch(() => {});
+
+    return () => {
+      set(martRef, false).catch(() => {});
+    };
+  }
+
+  updateRoomFields(cleanId, {
+    [`minigames/supermarket/activeInMart/${playerRole}`]: true
+  }).catch(() => {});
+
+  return () => {
+    updateRoomFields(cleanId, {
+      [`minigames/supermarket/activeInMart/${playerRole}`]: false
+    }).catch(() => {});
+  };
+}
+
 // Mã hóa nhẹ XOR + Base64 để tùy chọn đồng bộ Gemini API Key trong phòng kín của 2 người
 export function encodeSharedApiKey(apiKey, roomId) {
   if (!apiKey) return '';

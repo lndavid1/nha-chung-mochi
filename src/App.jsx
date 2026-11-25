@@ -42,6 +42,7 @@ import CookingGameModal from './components/Modals/CookingGameModal';
 import ServeBowlModal from './components/Modals/ServeBowlModal';
 import SubwayRunGame from './components/minigames/SubwayRunGame';
 import GrillSortGame from './components/minigames/GrillSortGame';
+import SupermarketIdleGame from './components/minigames/supermarket/SupermarketIdleGame';
 import DevCalibratorBar from './components/DevCalibratorBar';
 import { loadMergedPetAnchors } from './data/petAnchors';
 import { normalizeFridge } from './data/cookingData';
@@ -1872,6 +1873,10 @@ export default function App() {
         roomData={roomData}
         onBuyMarketItem={handleBuyMarketItem}
         onOpenFridge={() => setActiveModal('fridge')}
+        onOpenSupermarket={() => {
+          setActiveModal(null);
+          setActiveMiniGame('supermarket');
+        }}
       />
 
       <FridgeModal
@@ -1947,6 +1952,10 @@ export default function App() {
           setActiveModal(null);
           setActiveMiniGame('grillSort');
         }}
+        onStartSupermarket={() => {
+          setActiveModal(null);
+          setActiveMiniGame('supermarket');
+        }}
       />
 
       {/* MINI-GAME 1: MOCHI CHẠY PHỐ (SUBWAY SURFERS 3 LÀN) */}
@@ -1982,6 +1991,18 @@ export default function App() {
           }
           dailyRemainingCap={dailyArcadeRemaining}
           onLevelComplete={handleGrillLevelComplete}
+          onExit={() => setActiveMiniGame(null)}
+        />
+      )}
+
+      {/* MINI-GAME 3: SIÊU THỊ MOCHI (CO-OP IDLE TYCOON) */}
+      {activeMiniGame === 'supermarket' && (
+        <SupermarketIdleGame
+          roomId={session.roomId}
+          roomData={roomData}
+          playerRole={session.playerRole}
+          playerName={session.playerName}
+          partnerName={partnerInfo?.name || 'Người kia'}
           onExit={() => setActiveMiniGame(null)}
         />
       )}

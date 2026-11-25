@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingBasket, Coins, Refrigerator, UtensilsCrossed } from 'lucide-react';
+import { ShoppingBasket, Coins, Refrigerator, Store } from 'lucide-react';
 import BottomSheet from '../BottomSheet';
 import {
   INGREDIENTS_LIST,
@@ -7,6 +7,7 @@ import {
   normalizeFridge,
   CookingIconSvg
 } from '../../data/cookingData';
+import { MartIconSvg } from '../minigames/supermarket/supermarketAssets';
 import { soundEngine } from '../../services/soundEngine';
 
 export default function MarketModal({
@@ -14,7 +15,8 @@ export default function MarketModal({
   onClose,
   roomData,
   onBuyMarketItem,
-  onOpenFridge
+  onOpenFridge,
+  onOpenSupermarket
 }) {
   const [tab, setTab] = useState('ingredients'); // 'ingredients' | 'fastFood'
   const [flashId, setFlashId] = useState(null);
@@ -46,6 +48,35 @@ export default function MarketModal({
       maxHeight="86dvh"
     >
       <div className="space-y-3">
+        {/* Lối tắt nhanh sang Siêu Thị Mochi (Co-op Idle) */}
+        {onOpenSupermarket && (
+          <button
+            type="button"
+            onClick={() => {
+              soundEngine.play('tap');
+              onClose();
+              onOpenSupermarket();
+            }}
+            className="tactile-btn w-full px-3 py-2 rounded-2xl bg-gradient-to-r from-[#FFF3D6] to-[#E6F7EC] border-2 border-[#4A3525] flex items-center justify-between gap-2"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <MartIconSvg className="w-8 h-8 shrink-0" />
+              <div className="text-left min-w-0">
+                <div className="text-xs font-black text-[#4A3525] truncate">
+                  Siêu thị của tụi mình
+                </div>
+                <div className="text-[10px] font-bold text-[#7D6352] truncate">
+                  Quản lý quầy hàng, rút lãi Xu &amp; lấy nguyên liệu tươi!
+                </div>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-xl bg-[#FFE082] border-[1.6px] border-[#4A3525] text-[10.5px] font-black text-[#4A3525] flex items-center gap-1 shrink-0">
+              <Store className="w-3 h-3" />
+              <span>Vào ngay</span>
+            </span>
+          </button>
+        )}
+
         {/* Thanh chuyển 2 Tab + nút mở nhanh Tủ Lạnh */}
         <div className="flex items-center gap-2">
           <div className="flex-1 grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-[#FFF0DE] border-[1.8px] border-[#4A3525]">

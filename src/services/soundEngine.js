@@ -588,6 +588,20 @@ const SFX = {
   booster: (t) => {
     arp(t, [0, 1, 2, 3, 4, 5].map((i) => pent(5 + i)), 0.05, { vol: 0.13, dur: 0.45, type: 'sine' });
     noise(t, { dur: 0.3, fc: 1200, fc2: 6500, q: 0.6, vol: 0.04, a: 0.05 });
+  },
+
+  // ---- Siêu Thị Mochi (Idle Tycoon) ----
+  cashRegister: (t) => {
+    chime(t, 1567.98, 0.14, 0.22);
+    chime(t + 0.075, 2093.0, 0.16, 0.48);
+    noise(t, { dur: 0.03, fc: 3200, q: 1.8, vol: 0.05 });
+  },
+  upgrade: (t) => {
+    arp(t, [523.25, 659.25, 783.99, 1046.5], 0.065, { vol: 0.16, dur: 0.42, type: 'triangle' });
+  },
+  vipBell: (t) => {
+    chime(t, 1046.5, 0.18, 0.55);
+    chime(t + 0.18, 783.99, 0.18, 0.75);
   }
 };
 
@@ -597,7 +611,8 @@ const MIN_GAP_MS = {
   runCoin: 45,
   laneSwipe: 60,
   tap: 40,
-  petPat: 60
+  petPat: 60,
+  cashRegister: 120
 };
 
 // ---------- BGM Sequencer ----------

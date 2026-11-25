@@ -1,7 +1,15 @@
 import React from 'react';
-import { Gamepad2, Trophy, Flame, Play, Coins, Sparkles, UtensilsCrossed } from 'lucide-react';
+import { Gamepad2, Trophy, Flame, Play, Coins, Sparkles, UtensilsCrossed, Store } from 'lucide-react';
 import BottomSheet from '../BottomSheet';
 import { SkewerSvg } from '../minigames/grillAssets';
+import { MartIconSvg } from '../minigames/supermarket/supermarketAssets';
+import {
+  normalizeSupermarket,
+  computeIncomePerSec,
+  computeOfflineEarnings,
+  getMartTierInfo,
+  formatCash
+} from '../minigames/supermarket/supermarketData';
 
 export const ARCADE_DAILY_CAP = 150;
 
@@ -11,7 +19,8 @@ export default function ArcadeModal({
   roomData,
   dailyEarnedCoins = 0,
   onStartSubwayRun,
-  onStartGrillSort
+  onStartGrillSort,
+  onStartSupermarket
 }) {
   const petName = roomData?.pet?.name || 'Mochi';
   const p1Name = roomData?.players?.player1?.name || 'Chủ 1';
@@ -25,6 +34,12 @@ export default function ArcadeModal({
   const gP1 = grillData.player1 || { maxLevel: 0, bestScore: 0 };
   const gP2 = grillData.player2 || { maxLevel: 0, bestScore: 0 };
   const sharedOrdersCleared = Number(grillData.sharedOrdersCleared || 0);
+
+  const mart = normalizeSupermarket(roomData?.minigames?.supermarket);
+  const martIncomePerSec = computeIncomePerSec(mart);
+  const martTier = getMartTierInfo(mart.stalls);
+  const martOffline = computeOfflineEarnings(mart);
+  const hasOfflineReady = martOffline.elapsedSec >= 120 && martOffline.earned > 0;
 
   const remainingCap = Math.max(0, ARCADE_DAILY_CAP - dailyEarnedCoins);
 
@@ -55,6 +70,63 @@ export default function ArcadeModal({
             {dailyEarnedCoins}/{ARCADE_DAILY_CAP}
           </span>
         </div>
+
+        {/* THẺ MINI-GAME MỚI: SIÊU THỊ MOCHI (CO-OP IDLE TYCOON) */}
+        {onStartSupermarket && (
+          <div className="relative p-4 rounded-[26px] bg-gradient-to-br from-[#FFF9E6] via-[#EBF9F0] to-[#FFF2E2] border-[2.5px] border-[#4A3525] shadow-md space-y-3 overflow-hidden">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FFE082] border-[1.6px] border-[#4A3525] text-[10px] font-black text-[#4A3525] mb-1.5">
+                  <Store className="w-3 h-3" />
+                  <span>Mới • Co-op Idle Tycoon</span>
+                </div>
+                <h3 className="text-lg font-black text-[#4A3525] leading-tight">
+                  Siêu Thị {petName}
+                </h3>
+                <p className="text-[11px] font-bold text-[#7D6352] mt-0.5 leading-snug">
+                  Cùng quản lý 6 quầy hàng, thuê nhân viên thú, rút lãi tối đa +60 Xu/ngày &amp; gửi đồ tươi về Tủ Lạnh!
+                </p>
+              </div>
+
+              <div className="relative w-16 h-16 rounded-2xl bg-[#FFFDF9] border-2 border-[#4A3525] shrink-0 p-1.5 flex items-center justify-center shadow-sm">
+                <MartIconSvg className="w-13 h-13" />
+                {hasOfflineReady && (
+                  <span
+                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[#FF5A5F] border-2 border-[#FFFDF9] animate-bounce shadow"
+                    title="Có tiền ngoại tuyến chờ thu!"
+                  />
+                )}
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-2xl bg-[#FFFDF9] border-[1.8px] border-[#4A3525] flex items-center justify-between text-[11px] font-black text-[#4A3525]">
+              <span className="truncate">
+                Cấp: <strong className="text-[#E87A4D]">{martTier.title}</strong>
+              </span>
+              <span className="text-[#5EA87A] tabular-nums shrink-0">
+                Đang thu: +${formatCash(martIncomePerSec)}/giây
+              </span>
+            </div>
+
+            {hasOfflineReady && (
+              <div className="text-[10.5px] font-extrabold text-[#E85D75] flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>
+                  Kho tiền ngoại tuyến đã tích +${formatCash(martOffline.earned)} chờ thu!
+                </span>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={onStartSupermarket}
+              className="tactile-btn w-full py-3 rounded-2xl bg-[#FFE082] border-2 border-[#4A3525] text-[#4A3525] font-black text-sm flex items-center justify-center gap-2 shadow-sm"
+            >
+              <Play className="w-4 h-4 fill-[#4A3525]" />
+              <span>Quản Lý Siêu Thị Ngay!</span>
+            </button>
+          </div>
+        )}
 
         {/* THẺ MINI-GAME 1: BẾP NƯỚNG MOCHI (MỚI • GIẢI ĐỐ BBQ TRIPLE-MATCH) */}
         <div className="relative p-4 rounded-[26px] bg-gradient-to-br from-[#FFF6E5] via-[#FFE9D6] to-[#FFF0DE] border-[2.5px] border-[#4A3525] shadow-md space-y-3 overflow-hidden">
