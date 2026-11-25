@@ -28,12 +28,12 @@
     "rug_oval"
   ],
   "plants": [
+    "plant_Vàng",
     "plant_aquarium",
     "plant_cactus",
     "plant_fiddle",
     "plant_monstera",
-    "plant_sakura",
-    "plant_Vàng"
+    "plant_sakura"
   ],
   "decor": [
     "decor_beanbag",
@@ -91,5 +91,14 @@
     "tub_vintage",
     "vanity_arch"
   ],
-  "supermarket": []
+  "supermarket": [
+    "checkout_counter",
+    "delivery_van",
+    "stall_bakery",
+    "stall_electronics",
+    "stall_fish",
+    "stall_meat",
+    "stall_perfume",
+    "stall_produce"
+  ]
 }
