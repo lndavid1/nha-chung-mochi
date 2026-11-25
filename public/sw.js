@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nha-chung-mochi-v4';
+const CACHE_NAME = 'nha-chung-mochi-v5';
 const APP_SHELL = [
   './',
   './index.html',

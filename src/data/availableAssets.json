@@ -1,15 +1,21 @@
 {
-  "pets": [
-    "cat_happy",
-    "cat_hungry",
-    "cat_sleepy",
-    "cat_sulky"
+  "accessories": [
+    "acc_beret",
+    "acc_bow",
+    "acc_crown",
+    "acc_glasses",
+    "acc_scarf",
+    "acc_sprout"
   ],
-  "windows": [
-    "win_arch",
-    "win_bay",
-    "win_cabin",
-    "win_wood"
+  "bathroom": [
+    "bdecor_towel",
+    "bfloor_pebble",
+    "bmat_paw",
+    "bprop_basket",
+    "bwall_blue_tile",
+    "tub_hinoki",
+    "tub_vintage",
+    "vanity_arch"
   ],
   "beds": [
     "bed_cushion",
@@ -19,13 +25,31 @@
     "bed_wicker",
     "bed_wood"
   ],
-  "rugs": [
-    "rug_boho",
-    "rug_cloud",
-    "rug_daisy",
-    "rug_flower",
-    "rug_heart",
-    "rug_oval"
+  "decor": [
+    "decor_beanbag",
+    "decor_bookshelf",
+    "decor_lamp",
+    "decor_nightstand",
+    "decor_teatable",
+    "decor_vinyl"
+  ],
+  "kitchen": [
+    "bowl_cat",
+    "fridge_cream",
+    "fridge_mint",
+    "kdecor_spice",
+    "kfloor_checker",
+    "kwall_tile_cream",
+    "stove_oak",
+    "table_round"
+  ],
+  "pets": [
+    "cat_happy",
+    "cat_hungry",
+    "cat_sleepy",
+    "cat_sulky",
+    "corgi_happy",
+    "rabbit_happy"
   ],
   "plants": [
     "plant_Vàng",
@@ -35,27 +59,13 @@
     "plant_monstera",
     "plant_sakura"
   ],
-  "decor": [
-    "decor_beanbag",
-    "decor_bookshelf",
-    "decor_lamp",
-    "decor_nightstand",
-    "decor_teatable",
-    "decor_vinyl"
-  ],
-  "wallDecor": [
-    "wdecor_calendar",
-    "wdecor_clock",
-    "wdecor_fairy",
-    "wdecor_shelf"
-  ],
-  "accessories": [
-    "acc_beret",
-    "acc_bow",
-    "acc_crown",
-    "acc_glasses",
-    "acc_scarf",
-    "acc_sprout"
+  "rugs": [
+    "rug_boho",
+    "rug_cloud",
+    "rug_daisy",
+    "rug_flower",
+    "rug_heart",
+    "rug_oval"
   ],
   "skewers": [
     "avocado",
@@ -71,26 +81,6 @@
     "squid",
     "veggie"
   ],
-  "kitchen": [
-    "bowl_cat",
-    "fridge_cream",
-    "fridge_mint",
-    "kdecor_spice",
-    "kfloor_checker",
-    "kwall_tile_cream",
-    "stove_oak",
-    "table_round"
-  ],
-  "bathroom": [
-    "bdecor_towel",
-    "bfloor_pebble",
-    "bmat_paw",
-    "bprop_basket",
-    "bwall_blue_tile",
-    "tub_hinoki",
-    "tub_vintage",
-    "vanity_arch"
-  ],
   "supermarket": [
     "checkout_counter",
     "delivery_van",
@@ -100,5 +90,17 @@
     "stall_meat",
     "stall_perfume",
     "stall_produce"
+  ],
+  "wallDecor": [
+    "wdecor_calendar",
+    "wdecor_clock",
+    "wdecor_fairy",
+    "wdecor_shelf"
+  ],
+  "windows": [
+    "win_arch",
+    "win_bay",
+    "win_cabin",
+    "win_wood"
   ]
 }
