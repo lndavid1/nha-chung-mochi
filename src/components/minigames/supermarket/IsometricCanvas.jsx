@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import availableAssets from '../../../data/availableAssets.json';
 import {
   DEPARTMENTS,
   BRANCHES,
@@ -15,6 +16,25 @@ import {
 const TILE_W = 36;
 const TILE_H = 18;
 const INK = '#4A3525';
+
+// Ánh xạ ID công trình sang tên file Blender .webp trong public/assets/supermarket/
+const DEPT_SPRITE_ID = {
+  bakery: 'stall_bakery',
+  produce: 'stall_produce',
+  butcher: 'stall_meat',
+  seafood: 'stall_fish',
+  perfume: 'stall_perfume',
+  electronics: 'stall_electronics'
+};
+
+function drawAnchoredSprite(ctx, img, anchorX, anchorY, targetW) {
+  if (!img || !img.complete || !img.naturalWidth) return false;
+  const aspect = img.naturalHeight / img.naturalWidth;
+  const drawW = targetW;
+  const drawH = targetW * aspect;
+  ctx.drawImage(img, anchorX - drawW / 2, anchorY - drawH, drawW, drawH);
+  return true;
+}
 
 function iso(gx, gy, gz = 0) {
   return {
@@ -109,6 +129,7 @@ export default function IsometricCanvas({
   onTapVipCar
 }) {
   const canvasRef = useRef(null);
+  const spritesRef = useRef({});
   const camRef = useRef({
     x: 40,
     y: -155,
@@ -125,6 +146,22 @@ export default function IsometricCanvas({
   useEffect(() => {
     camRef.current.zoom = zoom;
   }, [zoom]);
+
+  // Preload các sprite Blender Isometric .webp có sẵn trong public/assets/supermarket/
+  useEffect(() => {
+    const list = availableAssets?.supermarket || [];
+    if (!Array.isArray(list) || list.length === 0) return;
+    const base = import.meta.env.BASE_URL || './';
+    const normBase = base.endsWith('/') ? base : `${base}/`;
+    const cache = spritesRef.current;
+
+    list.forEach((assetId) => {
+      if (cache[assetId]) return;
+      const img = new Image();
+      img.src = `${normBase}assets/supermarket/${assetId}.webp`;
+      cache[assetId] = img;
+    });
+  }, []);
 
   const propsRef = useRef({
     isCoopShift,
@@ -364,14 +401,20 @@ export default function IsometricCanvas({
           drawPillLabel(ctx, lbl.x, lbl.y - 8, dept.name, '#FFFDF9', INK, INK, 9.5);
           drawPillLabel(ctx, lbl.x, lbl.y + 10, `Mở $${formatMoney(cost)}`, '#88C9A1', INK, INK, 9.5);
         } else {
-          // Quầy kệ 3D Isometric chính
-          drawIsoBox(ctx, dept.gx - 0.95, dept.gy - 0.55, 1.9, 0.85, 18, dept.color, '#E6BD8E', '#C9986B', INK);
-          // Kệ trưng bày phụ mọc thêm khi đạt Sao (Lv 25+ & Lv 50+)
-          if (stars >= 1) {
-            drawIsoBox(ctx, dept.gx - 0.85, dept.gy - 0.82, 1.7, 0.25, 28, '#FFFDF9', dept.color, dept.color, INK);
-          }
-          if (stars >= 2) {
-            drawIsoBox(ctx, dept.gx - 0.45, dept.gy + 0.4, 0.9, 0.35, 13, '#FFE082', dept.color, dept.color, INK);
+          const spriteKey = DEPT_SPRITE_ID[dept.id];
+          const spriteImg = spriteKey ? spritesRef.current[spriteKey] : null;
+          const anchor = iso(dept.gx, dept.gy + 0.45, 0);
+          const drewSprite = drawAnchoredSprite(ctx, spriteImg, anchor.x, anchor.y, 126);
+
+          if (!drewSprite) {
+            // Fallback: Quầy kệ 3D Isometric mặc định
+            drawIsoBox(ctx, dept.gx - 0.95, dept.gy - 0.55, 1.9, 0.85, 18, dept.color, '#E6BD8E', '#C9986B', INK);
+            if (stars >= 1) {
+              drawIsoBox(ctx, dept.gx - 0.85, dept.gy - 0.82, 1.7, 0.25, 28, '#FFFDF9', dept.color, dept.color, INK);
+            }
+            if (stars >= 2) {
+              drawIsoBox(ctx, dept.gx - 0.45, dept.gy + 0.4, 0.9, 0.35, 13, '#FFE082', dept.color, dept.color, INK);
+            }
           }
 
           // Nhân viên đứng bán trong gian hàng (1..4 người)
@@ -405,10 +448,15 @@ export default function IsometricCanvas({
         drawIsoRect(ctx, 0.9, 6.0, 7.8, 1.4, 'rgba(255,224,130,0.32)', '#FF9B71', 3);
       }
       const lanes = state.checkout.lanes || 1;
+      const checkoutImg = spritesRef.current.checkout_counter || null;
       for (let l = 0; l < 6; l++) {
         const lp = getCheckoutLaneCoord(l);
         if (l < lanes) {
-          drawIsoBox(ctx, lp.gx - 0.35, lp.gy - 0.25, 0.7, 0.55, 13, '#88C9A1', '#E6BD8E', '#C9986B', INK);
+          const cAnchor = iso(lp.gx, lp.gy + 0.32, 0);
+          const drewCheckout = drawAnchoredSprite(ctx, checkoutImg, cAnchor.x, cAnchor.y, 62);
+          if (!drewCheckout) {
+            drawIsoBox(ctx, lp.gx - 0.35, lp.gy - 0.25, 0.7, 0.55, 13, '#88C9A1', '#E6BD8E', '#C9986B', INK);
+          }
           // Thu ngân ngồi trực
           const cp = iso(lp.gx + 0.18, lp.gy + 0.12, 12);
           ctx.beginPath();
@@ -430,7 +478,12 @@ export default function IsometricCanvas({
       drawIsoBox(ctx, 4.85 + slide, 7.68, 0.65, 0.12, 22, '#CFEAF7', '#9AD6F5', '#78C2E6', INK);
 
       // 5. XE TẢI GIAO HÀNG (DELIVERY VAN)
-      drawIsoBox(ctx, world.deliveryVanX - 0.55, 9.6, 1.3, 0.75, 19, '#FFFDF9', '#FF9B71', '#E87A4D', INK);
+      const vanImg = spritesRef.current.delivery_van || null;
+      const vanAnchor = iso(world.deliveryVanX + 0.1, 10.35, 0);
+      const drewVan = drawAnchoredSprite(ctx, vanImg, vanAnchor.x, vanAnchor.y, 96);
+      if (!drewVan) {
+        drawIsoBox(ctx, world.deliveryVanX - 0.55, 9.6, 1.3, 0.75, 19, '#FFFDF9', '#FF9B71', '#E87A4D', INK);
+      }
       const vanTop = iso(world.deliveryVanX + 0.1, 9.95, 28);
       if (world.deliveryProgress >= 1 && !world.deliveryDispatching) {
         const bounce = Math.sin(now / 180) * 4;

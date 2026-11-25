@@ -20,6 +20,7 @@ CATEGORIES = [
     "skewers",
     "kitchen",
     "bathroom",
+    "supermarket",
 ]
 MAX_DIM = 512
 ACCESSORY_MAX_DIM = 256
